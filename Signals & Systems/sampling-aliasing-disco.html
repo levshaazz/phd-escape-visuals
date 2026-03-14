@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sampling & Aliasing Disco</title>
+<title>Sampling &amp; Aliasing Disco</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
@@ -187,8 +187,8 @@
 <div class="app">
 
   <div class="header">
-    <h1>Sampling & Aliasing Disco</h1>
-    <span class="tag">Signals & Systems</span>
+    <h1>Sampling &amp; Aliasing Disco</h1>
+    <span class="tag">Signals &amp; Systems</span>
   </div>
 
   <div class="top-row">
@@ -225,29 +225,29 @@
 
     <div class="tc active" id="theory-en">
       <h3>Sampling Theorem & Aliasing</h3>
-      <p>A signal <span class="k">x(t)=\sin(2\pi f t)</span> can be perfectly reconstructed from samples if the <strong>Nyquist condition</strong> holds:</p>
+      <p>A signal <span class="k">x(t)=\sin(2\pi f t)</span> can be perfectly reconstructed from samples if the <strong>Nyquist condition</strong> holds, where <span class="k">f_s</span> is the <strong>sampling frequency</strong> and <span class="k">f_N</span> is the <strong>Nyquist frequency</strong> (half the sampling rate):</p>
       <div class="fb"><span class="k-block">f_s > 2f \quad\Longleftrightarrow\quad f < f_N = \tfrac{f_s}{2}</span></div>
       <p>When <span class="k">f > f_N</span>, the sampled signal is indistinguishable from a lower-frequency sinusoid — <strong>aliasing</strong>. The alias frequency:</p>
       <div class="fb"><span class="k-block">f_{\text{alias}} = \left|\, ((f + f_N) \bmod f_s) - f_N \,\right|</span></div>
-      <p class="note"><strong>Stroboscopic effect:</strong> a wheel at <span class="k">f</span> filmed at <span class="k">f_s</span> fps appears to rotate at <span class="k">f_{\text{alias}}</span> — it can slow, stop, or reverse.</p>
+      <p class="note"><strong>Stroboscopic effect:</strong> a wheel at <span class="k">f</span> filmed at <span class="k">f_s</span> FPS (frames per second) appears to rotate at <span class="k">f_{\text{alias}}</span> — it can slow, stop, or reverse.</p>
     </div>
 
     <div class="tc" id="theory-ru">
       <h3>Теорема отсчётов и алиасинг</h3>
-      <p>Сигнал <span class="k">x(t)=\sin(2\pi f t)</span> точно восстановим из отсчётов, если выполнено <strong>условие Найквиста</strong>:</p>
+      <p>Сигнал <span class="k">x(t)=\sin(2\pi f t)</span> точно восстановим из отсчётов, если выполнено <strong>условие Найквиста</strong>, где <span class="k">f_s</span> — <strong>частота дискретизации</strong>, а <span class="k">f_N</span> — <strong>частота Найквиста</strong> (половина частоты дискретизации):</p>
       <div class="fb"><span class="k-block">f_s > 2f \quad\Longleftrightarrow\quad f < f_N = \tfrac{f_s}{2}</span></div>
-      <p>При <span class="k">f > f_N</span> дискретизированный сигнал неотличим от синусоиды с меньшей частотой — <strong>алиасинг</strong>. Ложная частота:</p>
+      <p>При <span class="k">f > f_N</span> дискретизированный сигнал неотличим от синусоиды с меньшей частотой — <strong>алиасинг</strong> (наложение частот). Ложная частота:</p>
       <div class="fb"><span class="k-block">f_{\text{alias}} = \left|\, ((f + f_N) \bmod f_s) - f_N \,\right|</span></div>
-      <p class="note"><strong>Стробоскопический эффект:</strong> колесо с частотой <span class="k">f</span>, снятое при <span class="k">f_s</span> кадр/с, кажется вращающимся с частотой <span class="k">f_{\text{alias}}</span> — может замедлиться, остановиться или «поехать назад».</p>
+      <p class="note"><strong>Стробоскопический эффект:</strong> колесо с частотой <span class="k">f</span>, снятое при <span class="k">f_s</span> кадров в секунду, кажется вращающимся с частотой <span class="k">f_{\text{alias}}</span> — может замедлиться, остановиться или «поехать назад».</p>
     </div>
 
     <div class="tc" id="theory-tt">
       <h3>Сайланма теоремасы һәм алиасинг</h3>
-      <p>Сигнал <span class="k">x(t)=\sin(2\pi f t)</span> сайланмалардан төгәл торгызыла, әгәр <strong>Найквист шарты</strong> үтәлсә:</p>
+      <p>Сигнал <span class="k">x(t)=\sin(2\pi f t)</span> сайланмалардан төгәл торгызыла, әгәр <strong>Найквист шарты</strong> үтәлсә, монда <span class="k">f_s</span> — <strong>дискретлаштыру ешлыгы</strong>, ә <span class="k">f_N</span> — <strong>Найквист ешлыгы</strong> (дискретлаштыру ешлыгының яртысы):</p>
       <div class="fb"><span class="k-block">f_s > 2f \quad\Longleftrightarrow\quad f < f_N = \tfrac{f_s}{2}</span></div>
-      <p><span class="k">f > f_N</span> булганда, дискретлаштырылган сигнал түбәнрәк ешлыктагы синусоидадан аерылгысыз — <strong>алиасинг</strong>. Ялган ешлык:</p>
+      <p><span class="k">f > f_N</span> булганда, дискретлаштырылган сигнал түбәнрәк ешлыктагы синусоидадан аерылгысыз — <strong>алиасинг</strong> (ешлыкларның өстәлүе). Ялган ешлык:</p>
       <div class="fb"><span class="k-block">f_{\text{alias}} = \left|\, ((f + f_N) \bmod f_s) - f_N \,\right|</span></div>
-      <p class="note"><strong>Стробоскопик эффект:</strong> <span class="k">f</span> ешлыгындагы тәгәрмәч <span class="k">f_s</span> кадр/с белән төшерелгәндә, <span class="k">f_{\text{alias}}</span> ешлыгында әйләнгән кебек күренә — акрынлаша, туктый яки «артка әйләнә».</p>
+      <p class="note"><strong>Стробоскопик эффект:</strong> <span class="k">f</span> ешлыгындагы тәгәрмәч <span class="k">f_s</span> кадр/секунд белән төшерелгәндә, <span class="k">f_{\text{alias}}</span> ешлыгында әйләнгән кебек күренә — акрынлаша, туктый яки «артка әйләнә».</p>
     </div>
   </div>
 
@@ -327,7 +327,7 @@
 
   function drawWave(dt) {
     const W=wDim.w, H=wDim.h, ctx=wCtx;
-    ctx.clearRect(0,0,W,H); ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
     const nyq=sampleRate/2, isA=signalFreq>nyq, af=getAliasFreq(signalFreq,sampleRate), col=isA?AMBER:BLUE;
     const p=16, midY=H/2, amp=H*0.36, tw=4, dW=W-2*p;
 
@@ -356,7 +356,7 @@
 
   function drawWheel(dt) {
     const W=whDim.w, H=whDim.h, ctx=whCtx;
-    ctx.clearRect(0,0,W,H); ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
     const isA=signalFreq>sampleRate/2, col=isA?AMBER:BLUE, sc=16, cx=W/2, cy=H/2, R=Math.min(W,H)*0.37;
 
     ghostTimer+=dt; const si=1/sampleRate;
@@ -380,7 +380,7 @@
 
   function drawSpectrum() {
     const W=sDim.w, H=sDim.h, ctx=sCtx;
-    ctx.clearRect(0,0,W,H); ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
     const nyq=sampleRate/2, isA=signalFreq>nyq, af=getAliasFreq(signalFreq,sampleRate), maxF=25;
     const p={l:10,r:10,t:20,b:22}, dW=W-p.l-p.r, dH=H-p.t-p.b;
     const fX=f=>p.l+(f/maxF)*dW, bot=p.t+dH;
@@ -400,7 +400,8 @@
     if(isA&&af>0.05){const ax=fX(af);drawGlow(ctx,ax,bot-sH,14,AMBER,0.4);ctx.strokeStyle=rgb(AMBER,1);ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(ax,bot);ctx.lineTo(ax,bot-sH);ctx.stroke();ctx.beginPath();ctx.arc(ax,bot-sH,3,0,Math.PI*2);ctx.fillStyle=rgb(AMBER,1);ctx.fill();ctx.fillStyle=rgb(AMBER,0.9);ctx.fillText('fa',ax,bot-sH-7);}
 
     ctx.globalAlpha=0.2;
-    for(let k=1;k<=3;k++){for(const cf of[k*sampleRate-signalFreq,k*sampleRate+signalFreq]){if(cf>0&&cf<=maxF){const cx2=fX(cf);ctx.strokeStyle=rgb(BLUE,1);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx2,bot);ctx.lineTo(cx2,bot-dH*0.4);ctx.stroke();}}}
+    const copyCol=isA?AMBER:BLUE;
+    for(let k=1;k<=3;k++){for(const cf of[k*sampleRate-signalFreq,k*sampleRate+signalFreq]){if(cf>0&&cf<=maxF){const cx2=fX(cf);ctx.strokeStyle=rgb(copyCol,1);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx2,bot);ctx.lineTo(cx2,bot-dH*0.4);ctx.stroke();}}}
     ctx.globalAlpha=1;
 
     ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('FREQ DOMAIN',W-p.r,12);

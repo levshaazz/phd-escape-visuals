@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convolution Roller</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #080d14;
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+  }
+
+  .app {
+    width: min(calc(100vh - 20px), calc(100vw - 20px), 760px);
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    height: 20px;
+  }
+  .header h1 { font-size: 14px; font-weight: 700; color: #e8ecf0; }
+  .header .tag { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7088a0; }
+
+  .cbox {
+    background: rgba(60,130,200,0.03);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; }
+
+  .top-row {
+    display: grid;
+    grid-template-columns: 1fr 190px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .controls-box {
+    background: rgba(60,130,200,0.03);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .ctrl-group label {
+    display: block;
+    font-size: 8px;
+    font-weight: 600;
+    color: #7088a0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+
+  .sig-btns {
+    display: flex;
+    gap: 2px;
+  }
+  .sig-btn {
+    background: rgba(60,130,200,0.06);
+    border: 1px solid rgba(60,130,200,0.1);
+    color: #7088a0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    padding: 3px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sig-btn:hover { color: #b0c8e0; }
+  .sig-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; border-color: rgba(59,164,255,0.3); }
+
+  .sig-formula {
+    margin-top: 2px;
+    min-height: 14px;
+  }
+  .sig-formula .katex { font-size: 0.72em; }
+
+  .ctrl-group input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(60,130,200,0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .ctrl-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #3ba4ff;
+    border: 2px solid #0a1018;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(59,164,255,0.5);
+  }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ctrl-row .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: #e8ecf0;
+    min-width: 42px;
+    text-align: right;
+  }
+
+  .play-btn {
+    background: rgba(59,164,255,0.12);
+    border: 1px solid rgba(59,164,255,0.2);
+    color: #3ba4ff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .play-btn:hover { background: rgba(59,164,255,0.2); }
+
+  .status-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    color: #7088a0;
+  }
+
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .theory {
+    background: rgba(60,130,200,0.03);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lang-sw {
+    display: flex; gap: 2px; margin-bottom: 6px;
+    background: rgba(60,130,200,0.06); border-radius: 6px; padding: 2px; width: fit-content; flex-shrink: 0;
+  }
+  .lang-btn {
+    background: none; border: none; color: #7088a0;
+    font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600;
+    padding: 3px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  }
+  .lang-btn:hover { color: #b0c8e0; }
+  .lang-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; }
+
+  .tc { display: none; }
+  .tc.active { display: block; }
+  .tc h3 { font-size: 11px; font-weight: 700; color: #e8ecf0; margin-bottom: 4px; }
+  .tc p { font-size: 11px; line-height: 1.5; color: #b8c8d8; margin-bottom: 4px; }
+  .tc p strong { color: #e8ecf0; }
+  .tc .fb {
+    background: rgba(60,130,200,0.06); border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 6px; padding: 4px 10px; margin: 4px 0; text-align: center;
+  }
+  .tc .fb .katex { font-size: 0.9em; color: #e8ecf0; }
+  .tc .note {
+    font-size: 10px; line-height: 1.45; color: #ffb84d;
+    border-left: 2px solid rgba(255,159,28,0.5); padding-left: 8px; margin-top: 4px;
+  }
+  .tc .note strong { color: #ffc966; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>Convolution Roller</h1>
+    <span class="tag">Signals &amp; Systems</span>
+  </div>
+
+  <div class="top-row">
+    <div class="cbox"><canvas id="inputCanvas" height="120"></canvas></div>
+    <div class="controls-box">
+      <div class="ctrl-group">
+        <label>Signal f(τ)</label>
+        <div class="sig-btns" id="fBtns">
+          <button class="sig-btn active" data-sig="rect">rect</button>
+          <button class="sig-btn" data-sig="tri">tri</button>
+          <button class="sig-btn" data-sig="gauss">gauss</button>
+          <button class="sig-btn" data-sig="exp">exp</button>
+        </div>
+        <div class="sig-formula" id="fFormula" style="color:rgba(59,164,255,0.85)"></div>
+      </div>
+      <div class="ctrl-group">
+        <label>Signal g(τ)</label>
+        <div class="sig-btns" id="gBtns">
+          <button class="sig-btn active" data-sig="rect">rect</button>
+          <button class="sig-btn" data-sig="tri">tri</button>
+          <button class="sig-btn" data-sig="gauss">gauss</button>
+          <button class="sig-btn" data-sig="exp">exp</button>
+        </div>
+        <div class="sig-formula" id="gFormula" style="color:rgba(255,159,28,0.85)"></div>
+      </div>
+      <div class="ctrl-group">
+        <label>Position t</label>
+        <div class="ctrl-row">
+          <input type="range" id="tSlider" min="-3" max="3" step="0.02" value="-3">
+          <span class="val" id="tVal">-3.0</span>
+        </div>
+      </div>
+      <div class="ctrl-row" style="justify-content:space-between">
+        <button class="play-btn" id="playBtn">▶ PLAY</button>
+        <span class="status-line" id="areaText">area = 0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mid-row">
+    <div class="cbox"><canvas id="productCanvas" height="130"></canvas></div>
+    <div class="cbox"><canvas id="convCanvas" height="130"></canvas></div>
+  </div>
+
+  <div class="theory">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc active" id="theory-en">
+      <h3>Convolution</h3>
+      <p>The convolution of two signals <span class="k">f</span> and <span class="k">g</span> produces a new signal describing how the shape of one is "smeared" by the other:</p>
+      <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
+      <p>Geometrically: <strong>flip</strong> <span class="k">g</span>, <strong>shift</strong> it by <span class="k">t</span>, <strong>multiply</strong> pointwise with <span class="k">f</span>, and <strong>integrate</strong> the product. The shaded area is the output value at that <span class="k">t</span>.</p>
+      <p class="note"><strong>LTI (Linear Time-Invariant) systems:</strong> if <span class="k">f</span> is the input and <span class="k">g</span> is the <strong>impulse response</strong> (the system's output when the input is a unit impulse <span class="k">\delta(t)</span>), then <span class="k">f*g</span> is the system output. Convolution is the fundamental operation of all LTI systems.</p>
+    </div>
+
+    <div class="tc" id="theory-ru">
+      <h3>Свёртка</h3>
+      <p>Свёртка двух сигналов <span class="k">f</span> и <span class="k">g</span> порождает новый сигнал, описывающий «размазывание» формы одного по другому:</p>
+      <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
+      <p>Геометрически: <strong>отразить</strong> <span class="k">g</span>, <strong>сдвинуть</strong> на <span class="k">t</span>, <strong>перемножить</strong> поточечно с <span class="k">f</span> и <strong>проинтегрировать</strong>. Закрашенная площадь — значение выхода при данном <span class="k">t</span>.</p>
+      <p class="note"><strong>ЛСИ (линейные стационарные, инвариантные во времени) системы:</strong> если <span class="k">f</span> — вход, а <span class="k">g</span> — <strong>импульсная характеристика</strong> (отклик системы на единичный импульс <span class="k">\delta(t)</span>), то <span class="k">f*g</span> — выход системы. Свёртка — фундаментальная операция всех ЛСИ-систем.</p>
+    </div>
+
+    <div class="tc" id="theory-tt">
+      <h3>Свёртка (Конволюция)</h3>
+      <p><span class="k">f</span> һәм <span class="k">g</span> сигналларының свёрткасы яңа сигнал барлыкка китерә — берсенең формасы икенчесе буенча «таралуын» күрсәтә:</p>
+      <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
+      <p>Геометрик мәгънәсе: <span class="k">g</span> сигналын <strong>чагылдыр</strong>, <span class="k">t</span> га <strong>күчер</strong>, <span class="k">f</span> белән <strong>тапкырла</strong> һәм <strong>интеграллә</strong>. Буялган мәйдан — бирелгән <span class="k">t</span> дагы чыгыш кыйммәте.</p>
+      <p class="note"><strong>ЛСИ (сызыкча стационар, вакытка карата инвариант) системалар:</strong> <span class="k">f</span> — кертү, <span class="k">g</span> — <strong>импульслы характеристика</strong> (берәмлек импульс <span class="k">\delta(t)</span> кертүгә система җавабы) булса, <span class="k">f*g</span> — система чыгышы. Свёртка — барлык ЛСИ-системаларның төп операциясе.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  document.querySelectorAll('.k').forEach(el => katex.render(el.textContent, el, { throwOnError: false }));
+  document.querySelectorAll('.k-block').forEach(el => katex.render(el.textContent, el, { throwOnError: false, displayMode: true }));
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tc').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('theory-' + btn.dataset.lang).classList.add('active');
+    });
+  });
+
+  // ---- SIGNALS ----
+  const signals = {
+    rect: τ => (Math.abs(τ) <= 0.5) ? 1 : 0,
+    tri:  τ => Math.max(0, 1 - Math.abs(τ)),
+    gauss:τ => Math.exp(-τ * τ / 0.18),
+    exp:  τ => (τ >= 0) ? Math.exp(-2.5 * τ) : 0,
+  };
+
+  const sigFormulas = {
+    rect: '\\Pi(\\tau)=\\begin{cases}1,&|\\tau|\\le\\tfrac{1}{2}\\\\0&\\text{else}\\end{cases}',
+    tri:  '\\Lambda(\\tau)=\\max(0,\\,1-|\\tau|)',
+    gauss:'g(\\tau)=e^{-\\tau^2/0.18}',
+    exp:  'h(\\tau)=e^{-2.5\\tau}\\,u(\\tau)',
+  };
+
+  const fFormulaEl = document.getElementById('fFormula');
+  const gFormulaEl = document.getElementById('gFormula');
+
+  function renderFormula(el, sigType) {
+    katex.render(sigFormulas[sigType], el, { throwOnError: false, displayMode: false });
+  }
+
+  let fType = 'rect', gType = 'rect';
+  renderFormula(fFormulaEl, fType);
+  renderFormula(gFormulaEl, gType);
+
+  function setupBtns(containerId, setter, formulaEl) {
+    document.getElementById(containerId).querySelectorAll('.sig-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById(containerId).querySelectorAll('.sig-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setter(btn.dataset.sig);
+        renderFormula(formulaEl, btn.dataset.sig);
+        computeFullConvolution();
+      });
+    });
+  }
+  setupBtns('fBtns', s => { fType = s; }, fFormulaEl);
+  setupBtns('gBtns', s => { gType = s; }, gFormulaEl);
+
+  // ---- CANVASES ----
+  const inputCanvas = document.getElementById('inputCanvas');
+  const productCanvas = document.getElementById('productCanvas');
+  const convCanvas = document.getElementById('convCanvas');
+  const iCtx = inputCanvas.getContext('2d');
+  const pCtx = productCanvas.getContext('2d');
+  const cCtx = convCanvas.getContext('2d');
+  const tSlider = document.getElementById('tSlider');
+  const tValEl = document.getElementById('tVal');
+  const playBtn = document.getElementById('playBtn');
+  const areaText = document.getElementById('areaText');
+
+  let tPos = -3;
+  let playing = false;
+
+  tSlider.addEventListener('input', e => {
+    tPos = parseFloat(e.target.value);
+    tValEl.textContent = tPos.toFixed(1);
+  });
+
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    if (playing) {
+      playBtn.textContent = '⏸ PAUSE';
+      if (tPos >= 2.9) tPos = -3;
+    } else {
+      playBtn.textContent = '▶ PLAY';
+    }
+  });
+
+  const BLUE  = [59,164,255];
+  const AMBER = [255,159,28];
+  const STEEL = [136,153,170];
+  const TEAL  = [46,232,168];
+  const BG    = '#080d14';
+
+  function rgb(c, a=1) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+
+  function drawGlow(ctx, x, y, r, color, alpha) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgb(color, alpha));
+    g.addColorStop(0.4, rgb(color, alpha*0.3));
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  }
+
+  let dpr;
+  function sizeCanvas(c) {
+    dpr = window.devicePixelRatio || 1;
+    const r = c.getBoundingClientRect();
+    c.width = r.width * dpr; c.height = r.height * dpr;
+    c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+    return { w: r.width, h: r.height };
+  }
+
+  let iDim, pDim, cDim;
+  function resize() { iDim = sizeCanvas(inputCanvas); pDim = sizeCanvas(productCanvas); cDim = sizeCanvas(convCanvas); computeFullConvolution(); }
+  window.addEventListener('resize', resize);
+
+  // ---- CONVOLUTION PRECOMPUTE ----
+  const TAU_MIN = -4, TAU_MAX = 4, TAU_STEPS = 500;
+  const CONV_T_MIN = -3, CONV_T_MAX = 3, CONV_STEPS = 300;
+  let convResult = new Float32Array(CONV_STEPS);
+
+  function computeFullConvolution() {
+    const dtau = (TAU_MAX - TAU_MIN) / TAU_STEPS;
+    const f = signals[fType], g = signals[gType];
+    for (let i = 0; i < CONV_STEPS; i++) {
+      const tc = CONV_T_MIN + (i / (CONV_STEPS - 1)) * (CONV_T_MAX - CONV_T_MIN);
+      let sum = 0;
+      for (let j = 0; j < TAU_STEPS; j++) {
+        const tau = TAU_MIN + (j / TAU_STEPS) * (TAU_MAX - TAU_MIN);
+        sum += f(tau) * g(tc - tau) * dtau;
+      }
+      convResult[i] = sum;
+    }
+  }
+
+  function getConvAt(tc) {
+    const idx = (tc - CONV_T_MIN) / (CONV_T_MAX - CONV_T_MIN) * (CONV_STEPS - 1);
+    const i0 = Math.max(0, Math.min(CONV_STEPS - 2, Math.floor(idx)));
+    const frac = idx - i0;
+    return convResult[i0] * (1 - frac) + convResult[i0 + 1] * frac;
+  }
+
+  // ---- COORDINATE HELPERS ----
+  function makeCoords(W, H, pad, xMin, xMax) {
+    const drawW = W - pad.l - pad.r;
+    const drawH = H - pad.t - pad.b;
+    const midY = pad.t + drawH / 2;
+    return {
+      toX: v => pad.l + ((v - xMin) / (xMax - xMin)) * drawW,
+      toY: (v, amp) => midY - v * amp,
+      midY, drawW, drawH, W, H, pad
+    };
+  }
+
+  function drawAxes(ctx, co, xMin, xMax, label) {
+    ctx.strokeStyle = 'rgba(136,153,170,0.1)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(co.pad.l, co.midY); ctx.lineTo(co.W - co.pad.r, co.midY); ctx.stroke();
+    // vertical at 0
+    const zx = co.toX(0);
+    if (zx > co.pad.l && zx < co.W - co.pad.r) {
+      ctx.strokeStyle = 'rgba(136,153,170,0.06)';
+      ctx.beginPath(); ctx.moveTo(zx, co.pad.t); ctx.lineTo(zx, co.H - co.pad.b); ctx.stroke();
+    }
+    ctx.font = '600 8px Inter'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(136,153,170,0.5)';
+    ctx.fillText(label, co.W - co.pad.r, 12);
+  }
+
+  // ---- DRAW INPUT SIGNALS ----
+  function drawInputs() {
+    const W = iDim.w, H = iDim.h, ctx = iCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0,0,W,H);
+
+    const pad = {l:16,r:16,t:16,b:16};
+    const co = makeCoords(W, H, pad, -3.5, 3.5);
+    const amp = co.drawH * 0.38;
+    drawAxes(ctx, co, -3.5, 3.5, 'INPUT SIGNALS');
+
+    const f = signals[fType], g = signals[gType];
+
+    // f(τ) — blue, static
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.8); ctx.lineWidth = 2;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const y = co.toY(f(tau), amp);
+      px === 0 ? ctx.moveTo(pad.l + px, y) : ctx.lineTo(pad.l + px, y);
+    }
+    ctx.stroke();
+
+    // g(t-τ) — amber, flipped & shifted
+    ctx.beginPath(); ctx.strokeStyle = rgb(AMBER, 0.8); ctx.lineWidth = 2;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const y = co.toY(g(tPos - tau), amp);
+      px === 0 ? ctx.moveTo(pad.l + px, y) : ctx.lineTo(pad.l + px, y);
+    }
+    ctx.stroke();
+
+    // t marker line
+    const tx = co.toX(tPos);
+    if (tx > pad.l && tx < W - pad.r) {
+      ctx.strokeStyle = 'rgba(255,159,28,0.3)'; ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(tx, pad.t); ctx.lineTo(tx, H - pad.b); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '500 9px JetBrains Mono'; ctx.fillStyle = rgb(AMBER, 0.7); ctx.textAlign = 'center';
+      ctx.fillText('t=' + tPos.toFixed(1), tx, pad.t - 3);
+    }
+
+  }
+
+  // ---- DRAW PRODUCT ----
+  function drawProduct() {
+    const W = pDim.w, H = pDim.h, ctx = pCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0,0,W,H);
+
+    const pad = {l:14,r:14,t:18,b:18};
+    const co = makeCoords(W, H, pad, -3.5, 3.5);
+    const amp = co.drawH * 0.4;
+    drawAxes(ctx, co, -3.5, 3.5, 'PRODUCT');
+
+    const f = signals[fType], g = signals[gType];
+
+    // Filled product area
+    ctx.beginPath();
+    ctx.moveTo(pad.l, co.midY);
+    let area = 0;
+    const dtau = 7 / co.drawW;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const val = f(tau) * g(tPos - tau);
+      area += val * dtau;
+      ctx.lineTo(pad.l + px, co.toY(val, amp));
+    }
+    ctx.lineTo(pad.l + co.drawW, co.midY);
+    ctx.closePath();
+
+    // Gradient fill
+    const grad = ctx.createLinearGradient(0, co.midY - amp, 0, co.midY);
+    grad.addColorStop(0, rgb(TEAL, 0.25));
+    grad.addColorStop(1, rgb(TEAL, 0.02));
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Outline
+    ctx.beginPath(); ctx.strokeStyle = rgb(TEAL, 0.8); ctx.lineWidth = 1.5;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const val = f(tau) * g(tPos - tau);
+      px === 0 ? ctx.moveTo(pad.l + px, co.toY(val, amp)) : ctx.lineTo(pad.l + px, co.toY(val, amp));
+    }
+    ctx.stroke();
+
+    // Area label — use precomputed convolution for consistency with the curve
+    const convArea = getConvAt(Math.max(CONV_T_MIN, Math.min(CONV_T_MAX, tPos)));
+    areaText.textContent = `area = ${convArea.toFixed(3)}`;
+
+    // Legend
+    ctx.font = '600 8px JetBrains Mono'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(TEAL, 0.7); ctx.fillText('f(τ)·g(t−τ)', pad.l + 4, pad.t + 8);
+  }
+
+  // ---- DRAW CONVOLUTION RESULT ----
+  function drawConvolution() {
+    const W = cDim.w, H = cDim.h, ctx = cCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0,0,W,H);
+
+    const pad = {l:14,r:14,t:18,b:18};
+    const co = makeCoords(W, H, pad, CONV_T_MIN, CONV_T_MAX);
+
+    // Find max for scaling
+    let maxVal = 0.01;
+    for (let i = 0; i < CONV_STEPS; i++) maxVal = Math.max(maxVal, Math.abs(convResult[i]));
+    const amp = co.drawH * 0.42 / maxVal;
+
+    drawAxes(ctx, co, CONV_T_MIN, CONV_T_MAX, '(f * g)(t)');
+
+    // Full convolution curve
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.3); ctx.lineWidth = 1.5;
+    for (let i = 0; i < CONV_STEPS; i++) {
+      const tc = CONV_T_MIN + (i / (CONV_STEPS - 1)) * (CONV_T_MAX - CONV_T_MIN);
+      const x = co.toX(tc);
+      const y = co.toY(convResult[i], amp);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // "Drawn so far" part (up to current t) — bright
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.9); ctx.lineWidth = 2;
+    for (let i = 0; i < CONV_STEPS; i++) {
+      const tc = CONV_T_MIN + (i / (CONV_STEPS - 1)) * (CONV_T_MAX - CONV_T_MIN);
+      if (tc > tPos) break;
+      const x = co.toX(tc);
+      const y = co.toY(convResult[i], amp);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Current point dot
+    const curVal = getConvAt(Math.max(CONV_T_MIN, Math.min(CONV_T_MAX, tPos)));
+    const dotX = co.toX(tPos);
+    const dotY = co.toY(curVal, amp);
+    if (dotX >= pad.l && dotX <= W - pad.r) {
+      // Vertical line from dot to axis
+      ctx.strokeStyle = rgb(AMBER, 0.25); ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(dotX, co.midY); ctx.lineTo(dotX, dotY); ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawGlow(ctx, dotX, dotY, 14, AMBER, 0.4);
+      ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI*2);
+      ctx.fillStyle = rgb(AMBER, 1); ctx.fill();
+      ctx.beginPath(); ctx.arc(dotX, dotY, 1.5, 0, Math.PI*2);
+      ctx.fillStyle = '#e8ecf0'; ctx.fill();
+    }
+
+    // Label
+    ctx.font = '600 8px JetBrains Mono'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(BLUE, 0.7); ctx.fillText('(f*g)(t)', pad.l + 4, pad.t + 8);
+  }
+
+  // ---- INIT & LOOP ----
+  resize();
+
+  function draw(dt) {
+    if (playing) {
+      tPos += dt * 0.8;
+      if (tPos > 3) { tPos = -3; }
+      tSlider.value = tPos;
+      tValEl.textContent = tPos.toFixed(1);
+    }
+    drawInputs();
+    drawProduct();
+    drawConvolution();
+  }
+
+  let lastTime = 0;
+  function loop(time) {
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
+    lastTime = time;
+    draw(dt);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(time => { lastTime = time; loop(time); });
+})();
+</script>
+</body>
+</html>

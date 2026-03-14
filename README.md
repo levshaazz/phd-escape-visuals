@@ -13,6 +13,7 @@ Each visualization is a single self-contained HTML file. No build tools, no `nod
 | Simulation | What you'll learn (instead of finishing your thesis) | File |
 |---|---|---|
 | **Sampling & Aliasing Disco** | Nyquist theorem, aliasing, stroboscopic effect | [Open](Signals%20%26%20Systems/sampling-aliasing-disco.html) |
+| **Convolution Roller** | Convolution integral, LTI systems, impulse response | [Open](Signals%20%26%20Systems/convolution-roller.html) |
 
 ## How to use
 
