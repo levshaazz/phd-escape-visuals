@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sampling & Aliasing Disco</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #080d14;
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+  }
+
+  .app {
+    width: min(calc(100vh - 20px), calc(100vw - 20px), 760px);
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    height: 20px;
+  }
+  .header h1 { font-size: 14px; font-weight: 700; color: #e8ecf0; }
+  .header .tag { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7088a0; }
+
+  .cbox {
+    background: rgba(60,130,200,0.03);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; }
+
+  .top-row {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .controls-box {
+    background: rgba(60,130,200,0.03);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .ctrl-group label {
+    display: block;
+    font-size: 9px;
+    font-weight: 600;
+    color: #7088a0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+
+  .ctrl-group input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(60,130,200,0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .ctrl-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #3ba4ff;
+    border: 2px solid #0a1018;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(59,164,255,0.5);
+  }
+
+  .ctrl-group .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: #e8ecf0;
+    margin-top: 2px;
+  }
+
+  .status-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .status-line .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .theory {
+    background: rgba(60,130,200,0.03);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lang-sw {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 6px;
+    background: rgba(60,130,200,0.06);
+    border-radius: 6px;
+    padding: 2px;
+    width: fit-content;
+    flex-shrink: 0;
+  }
+  .lang-btn {
+    background: none; border: none;
+    color: #7088a0;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px; font-weight: 600;
+    padding: 3px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .lang-btn:hover { color: #b0c8e0; }
+  .lang-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; }
+
+  .tc { display: none; }
+  .tc.active { display: block; }
+  .tc h3 { font-size: 11px; font-weight: 700; color: #e8ecf0; margin-bottom: 4px; }
+  .tc p { font-size: 11px; line-height: 1.5; color: #b8c8d8; margin-bottom: 4px; }
+  .tc p strong { color: #e8ecf0; }
+
+  .tc .fb {
+    background: rgba(60,130,200,0.06);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 6px;
+    padding: 4px 10px;
+    margin: 4px 0;
+    text-align: center;
+  }
+  .tc .fb .katex { font-size: 0.9em; color: #e8ecf0; }
+
+  .tc .note {
+    font-size: 10px;
+    line-height: 1.45;
+    color: #ffb84d;
+    border-left: 2px solid rgba(255,159,28,0.5);
+    padding-left: 8px;
+    margin-top: 4px;
+  }
+  .tc .note strong { color: #ffc966; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>Sampling & Aliasing Disco</h1>
+    <span class="tag">Signals & Systems</span>
+  </div>
+
+  <div class="top-row">
+    <div class="cbox"><canvas id="waveCanvas" height="120"></canvas></div>
+    <div class="controls-box">
+      <div class="ctrl-group">
+        <label>Signal freq</label>
+        <input type="range" id="freqSlider" min="0.5" max="20" step="0.1" value="3">
+        <span class="val" id="freqVal">3.0 Hz</span>
+      </div>
+      <div class="ctrl-group">
+        <label>Sample rate</label>
+        <input type="range" id="sampleSlider" min="1" max="40" step="0.5" value="8">
+        <span class="val" id="sampleVal">8.0 Hz</span>
+      </div>
+      <div class="status-line" id="statusBar">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Nyquist OK</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mid-row">
+    <div class="cbox"><canvas id="wheelCanvas" height="160"></canvas></div>
+    <div class="cbox"><canvas id="specCanvas" height="160"></canvas></div>
+  </div>
+
+  <div class="theory">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc active" id="theory-en">
+      <h3>Sampling Theorem & Aliasing</h3>
+      <p>A signal <span class="k">x(t)=\sin(2\pi f t)</span> can be perfectly reconstructed from samples if the <strong>Nyquist condition</strong> holds:</p>
+      <div class="fb"><span class="k-block">f_s > 2f \quad\Longleftrightarrow\quad f < f_N = \tfrac{f_s}{2}</span></div>
+      <p>When <span class="k">f > f_N</span>, the sampled signal is indistinguishable from a lower-frequency sinusoid — <strong>aliasing</strong>. The alias frequency:</p>
+      <div class="fb"><span class="k-block">f_{\text{alias}} = \left|\, ((f + f_N) \bmod f_s) - f_N \,\right|</span></div>
+      <p class="note"><strong>Stroboscopic effect:</strong> a wheel at <span class="k">f</span> filmed at <span class="k">f_s</span> fps appears to rotate at <span class="k">f_{\text{alias}}</span> — it can slow, stop, or reverse.</p>
+    </div>
+
+    <div class="tc" id="theory-ru">
+      <h3>Теорема отсчётов и алиасинг</h3>
+      <p>Сигнал <span class="k">x(t)=\sin(2\pi f t)</span> точно восстановим из отсчётов, если выполнено <strong>условие Найквиста</strong>:</p>
+      <div class="fb"><span class="k-block">f_s > 2f \quad\Longleftrightarrow\quad f < f_N = \tfrac{f_s}{2}</span></div>
+      <p>При <span class="k">f > f_N</span> дискретизированный сигнал неотличим от синусоиды с меньшей частотой — <strong>алиасинг</strong>. Ложная частота:</p>
+      <div class="fb"><span class="k-block">f_{\text{alias}} = \left|\, ((f + f_N) \bmod f_s) - f_N \,\right|</span></div>
+      <p class="note"><strong>Стробоскопический эффект:</strong> колесо с частотой <span class="k">f</span>, снятое при <span class="k">f_s</span> кадр/с, кажется вращающимся с частотой <span class="k">f_{\text{alias}}</span> — может замедлиться, остановиться или «поехать назад».</p>
+    </div>
+
+    <div class="tc" id="theory-tt">
+      <h3>Сайланма теоремасы һәм алиасинг</h3>
+      <p>Сигнал <span class="k">x(t)=\sin(2\pi f t)</span> сайланмалардан төгәл торгызыла, әгәр <strong>Найквист шарты</strong> үтәлсә:</p>
+      <div class="fb"><span class="k-block">f_s > 2f \quad\Longleftrightarrow\quad f < f_N = \tfrac{f_s}{2}</span></div>
+      <p><span class="k">f > f_N</span> булганда, дискретлаштырылган сигнал түбәнрәк ешлыктагы синусоидадан аерылгысыз — <strong>алиасинг</strong>. Ялган ешлык:</p>
+      <div class="fb"><span class="k-block">f_{\text{alias}} = \left|\, ((f + f_N) \bmod f_s) - f_N \,\right|</span></div>
+      <p class="note"><strong>Стробоскопик эффект:</strong> <span class="k">f</span> ешлыгындагы тәгәрмәч <span class="k">f_s</span> кадр/с белән төшерелгәндә, <span class="k">f_{\text{alias}}</span> ешлыгында әйләнгән кебек күренә — акрынлаша, туктый яки «артка әйләнә».</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  document.querySelectorAll('.k').forEach(el => katex.render(el.textContent, el, { throwOnError: false }));
+  document.querySelectorAll('.k-block').forEach(el => katex.render(el.textContent, el, { throwOnError: false, displayMode: true }));
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tc').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('theory-' + btn.dataset.lang).classList.add('active');
+    });
+  });
+
+  const waveCanvas = document.getElementById('waveCanvas');
+  const wheelCanvas = document.getElementById('wheelCanvas');
+  const specCanvas = document.getElementById('specCanvas');
+  const wCtx = waveCanvas.getContext('2d');
+  const whCtx = wheelCanvas.getContext('2d');
+  const sCtx = specCanvas.getContext('2d');
+  const freqSlider = document.getElementById('freqSlider');
+  const sampleSlider = document.getElementById('sampleSlider');
+  const freqVal = document.getElementById('freqVal');
+  const sampleVal = document.getElementById('sampleVal');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const statusBar = document.getElementById('statusBar');
+
+  let targetFreq = 3, targetRate = 8;
+  let signalFreq = 3, sampleRate = 8;
+  let t = 0;
+  function lerp(a, b, k) { return a + (b - a) * k; }
+
+  // Electric Blue & Amber
+  const BLUE  = [59,164,255];
+  const AMBER = [255,159,28];
+  const STEEL = [136,153,170];
+  const TEAL  = [46,232,168];
+  const BG    = '#080d14';
+
+  function rgb(c, a=1) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+  function getAliasFreq(f, fs) { let fa = f % fs; if (fa > fs/2) fa = fs - fa; return fa; }
+
+  function drawGlow(ctx, x, y, r, color, alpha) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgb(color, alpha));
+    g.addColorStop(0.4, rgb(color, alpha*0.3));
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  }
+
+  let dpr;
+  function sizeCanvas(c) {
+    dpr = window.devicePixelRatio || 1;
+    const r = c.getBoundingClientRect();
+    c.width = r.width * dpr; c.height = r.height * dpr;
+    c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+    return { w: r.width, h: r.height };
+  }
+
+  let wDim, whDim, sDim;
+  function resize() { wDim = sizeCanvas(waveCanvas); whDim = sizeCanvas(wheelCanvas); sDim = sizeCanvas(specCanvas); }
+  window.addEventListener('resize', resize);
+  resize();
+
+  freqSlider.addEventListener('input', e => { targetFreq = parseFloat(e.target.value); freqVal.textContent = targetFreq.toFixed(1)+' Hz'; });
+  sampleSlider.addEventListener('input', e => { targetRate = parseFloat(e.target.value); sampleVal.textContent = targetRate.toFixed(1)+' Hz'; });
+
+  const GHOST_COUNT = 6;
+  let ghostAngles = new Array(GHOST_COUNT).fill(0), ghostTimer = 0;
+
+  function drawWave(dt) {
+    const W=wDim.w, H=wDim.h, ctx=wCtx;
+    ctx.clearRect(0,0,W,H); ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    const nyq=sampleRate/2, isA=signalFreq>nyq, af=getAliasFreq(signalFreq,sampleRate), col=isA?AMBER:BLUE;
+    const p=16, midY=H/2, amp=H*0.36, tw=4, dW=W-2*p;
+
+    ctx.strokeStyle='rgba(136,153,170,0.1)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(p,midY); ctx.lineTo(W-p,midY); ctx.stroke();
+
+    ctx.beginPath(); ctx.strokeStyle=rgb(BLUE,0.5); ctx.lineWidth=1.5;
+    for(let px=0;px<=dW;px++){const tL=(px/dW)*tw+t-tw;const y=midY-amp*Math.sin(2*Math.PI*signalFreq*tL);px===0?ctx.moveTo(p+px,y):ctx.lineTo(p+px,y);}
+    ctx.stroke();
+
+    if(isA&&af>0.05){ctx.beginPath();ctx.strokeStyle=rgb(AMBER,0.6);ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+    for(let px=0;px<=dW;px++){const tL=(px/dW)*tw+t-tw;const y=midY-amp*Math.sin(2*Math.PI*af*tL);px===0?ctx.moveTo(p+px,y):ctx.lineTo(p+px,y);}
+    ctx.stroke();ctx.setLineDash([]);}
+
+    const tS=t-tw, fs=Math.ceil(tS*sampleRate)/sampleRate;
+    for(let ts=fs;ts<=t;ts+=1/sampleRate){
+      const px=((ts-tS)/tw)*dW,x=p+px;if(x<p-5||x>W-p+5)continue;
+      const v=Math.sin(2*Math.PI*signalFreq*ts),y=midY-amp*v;
+      ctx.strokeStyle=rgb(col,0.5);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,midY);ctx.lineTo(x,y);ctx.stroke();
+      drawGlow(ctx,x,y,12,col,0.35);
+      ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=rgb(col,1);ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,1.2,0,Math.PI*2);ctx.fillStyle='#e8ecf0';ctx.fill();
+    }
+    ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('TIME DOMAIN',W-p,12);
+  }
+
+  function drawWheel(dt) {
+    const W=whDim.w, H=whDim.h, ctx=whCtx;
+    ctx.clearRect(0,0,W,H); ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    const isA=signalFreq>sampleRate/2, col=isA?AMBER:BLUE, sc=16, cx=W/2, cy=H/2, R=Math.min(W,H)*0.37;
+
+    ghostTimer+=dt; const si=1/sampleRate;
+    if(ghostTimer>=si){ghostTimer-=si;for(let i=GHOST_COUNT-1;i>0;i--)ghostAngles[i]=ghostAngles[i-1];ghostAngles[0]=2*Math.PI*signalFreq*t;}
+
+    drawGlow(ctx,cx,cy,R+20,col,0.08);
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.strokeStyle=rgb(col,0.25);ctx.lineWidth=1.5;ctx.stroke();
+
+    for(let g=GHOST_COUNT-1;g>=1;g--){
+      const al=0.06+0.12*(1-g/GHOST_COUNT);ctx.strokeStyle=rgb(col,al);ctx.lineWidth=1.5;
+      for(let i=0;i<sc;i++){const a=ghostAngles[g]+(i/sc)*Math.PI*2;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*6,cy+Math.sin(a)*6);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();}
+    }
+    for(let i=0;i<sc;i++){
+      const a=ghostAngles[0]+(i/sc)*Math.PI*2,tx=cx+Math.cos(a)*R,ty=cy+Math.sin(a)*R;
+      ctx.strokeStyle=rgb(col,0.9);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*6,cy+Math.sin(a)*6);ctx.lineTo(tx,ty);ctx.stroke();
+      drawGlow(ctx,tx,ty,6,col,0.5);ctx.beginPath();ctx.arc(tx,ty,2.5,0,Math.PI*2);ctx.fillStyle=rgb(col,1);ctx.fill();
+    }
+    drawGlow(ctx,cx,cy,8,col,0.4);ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle='#e8ecf0';ctx.fill();
+    ctx.font='600 8px Inter';ctx.textAlign='center';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('STROBOSCOPIC WHEEL',cx,H-8);
+  }
+
+  function drawSpectrum() {
+    const W=sDim.w, H=sDim.h, ctx=sCtx;
+    ctx.clearRect(0,0,W,H); ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+    const nyq=sampleRate/2, isA=signalFreq>nyq, af=getAliasFreq(signalFreq,sampleRate), maxF=25;
+    const p={l:10,r:10,t:20,b:22}, dW=W-p.l-p.r, dH=H-p.t-p.b;
+    const fX=f=>p.l+(f/maxF)*dW, bot=p.t+dH;
+
+    ctx.strokeStyle='rgba(136,153,170,0.12)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,bot);ctx.lineTo(W-p.r,bot);ctx.stroke();
+
+    ctx.font='500 7px JetBrains Mono';ctx.textAlign='center';ctx.fillStyle='rgba(136,153,170,0.45)';
+    for(let f=0;f<=maxF;f+=5){const x=fX(f);ctx.fillText(f+'',x,bot+11);ctx.strokeStyle='rgba(136,153,170,0.06)';ctx.beginPath();ctx.moveTo(x,p.t);ctx.lineTo(x,bot);ctx.stroke();}
+
+    const nX=fX(nyq);
+    ctx.fillStyle='rgba(136,153,170,0.04)';ctx.fillRect(p.l,p.t,nX-p.l,dH);
+    ctx.strokeStyle=rgb(STEEL,0.55);ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(nX,p.t-2);ctx.lineTo(nX,bot+2);ctx.stroke();ctx.setLineDash([]);
+    ctx.font='600 8px JetBrains Mono';ctx.fillStyle=rgb(STEEL,0.85);ctx.fillText('fN',nX,p.t-4);
+
+    const sH=dH*0.7;
+    if(signalFreq<=maxF){const sx=fX(signalFreq);drawGlow(ctx,sx,bot-sH,14,BLUE,0.35);ctx.strokeStyle=rgb(BLUE,1);ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(sx,bot);ctx.lineTo(sx,bot-sH);ctx.stroke();ctx.beginPath();ctx.arc(sx,bot-sH,3,0,Math.PI*2);ctx.fillStyle=rgb(BLUE,1);ctx.fill();ctx.font='600 8px JetBrains Mono';ctx.fillStyle=rgb(BLUE,0.9);ctx.fillText('f',sx,bot-sH-7);}
+    if(isA&&af>0.05){const ax=fX(af);drawGlow(ctx,ax,bot-sH,14,AMBER,0.4);ctx.strokeStyle=rgb(AMBER,1);ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(ax,bot);ctx.lineTo(ax,bot-sH);ctx.stroke();ctx.beginPath();ctx.arc(ax,bot-sH,3,0,Math.PI*2);ctx.fillStyle=rgb(AMBER,1);ctx.fill();ctx.fillStyle=rgb(AMBER,0.9);ctx.fillText('fa',ax,bot-sH-7);}
+
+    ctx.globalAlpha=0.2;
+    for(let k=1;k<=3;k++){for(const cf of[k*sampleRate-signalFreq,k*sampleRate+signalFreq]){if(cf>0&&cf<=maxF){const cx2=fX(cf);ctx.strokeStyle=rgb(BLUE,1);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx2,bot);ctx.lineTo(cx2,bot-dH*0.4);ctx.stroke();}}}
+    ctx.globalAlpha=1;
+
+    ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('FREQ DOMAIN',W-p.r,12);
+  }
+
+  function draw(dt) {
+    t+=dt;
+    signalFreq=lerp(signalFreq,targetFreq,1-Math.exp(-8*dt));
+    sampleRate=lerp(sampleRate,targetRate,1-Math.exp(-8*dt));
+    drawWave(dt); drawWheel(dt); drawSpectrum();
+
+    const isA=signalFreq>sampleRate/2;
+    if(isA){statusDot.style.background=rgb(AMBER);statusDot.style.boxShadow=`0 0 10px ${rgb(AMBER,0.6)}`;statusText.textContent='ALIASING';statusBar.style.color=rgb(AMBER);}
+    else{statusDot.style.background=rgb(TEAL);statusDot.style.boxShadow=`0 0 10px ${rgb(TEAL,0.5)}`;statusText.textContent='Nyquist OK';statusBar.style.color=rgb(TEAL);}
+  }
+
+  let lastTime=0;
+  function loop(time){const dt=Math.min((time-lastTime)/1000,0.05);lastTime=time;draw(dt);requestAnimationFrame(loop);}
+  requestAnimationFrame(time=>{lastTime=time;loop(time);});
+})();
+</script>
+</body>
+</html>
