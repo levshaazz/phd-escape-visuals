@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π Coin Estimator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root { --mono: 'JetBrains Mono', monospace; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body { background: #080d14; font-family: 'Inter', -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 10px; }
+  .app { width: min(calc(100vh - 20px), calc(100vw - 20px), 760px); aspect-ratio: 1; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+  .header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 20px; overflow: hidden; }
+  .header h1 { font-size: 14px; font-weight: 700; color: #e8ecf0; }
+  .header .tag { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7088a0; }
+
+  .cbox { background: rgba(60,130,200,0.03); border: 1px solid rgba(60,130,200,0.1); border-radius: 8px; overflow: hidden; }
+  canvas { display: block; width: 100%; }
+  .top-row { display: grid; grid-template-columns: 1fr 180px; gap: 6px; flex-shrink: 0; }
+  .top-row canvas { height: 220px; }
+
+  .right-panel { display: flex; flex-direction: column; }
+  .right-top { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .coin-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 16px; font-weight: 700; border: 2px solid rgba(136,153,170,0.3); color: #8899aa; background: rgba(136,153,170,0.05); transition: border-color 0.2s, color 0.2s, background 0.2s; }
+  .coin-circle.heads { border-color: rgba(46,232,168,0.5); color: #2ee8a8; background: rgba(46,232,168,0.08); }
+  .coin-circle.tails { border-color: rgba(255,159,28,0.5); color: #ff9f1c; background: rgba(255,159,28,0.08); }
+  .trial-info { font-family: var(--mono); font-size: 10px; color: #b8c8d8; text-align: center; line-height: 1.6; }
+  .trial-info .lbl { color: #8899aa; }
+  .right-sep { border: none; border-top: 1px solid rgba(60,130,200,0.1); margin: 0; }
+  .right-bottom { padding: 8px 12px; display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+  .cum-row { display: flex; justify-content: space-between; align-items: center; height: 16px; overflow: hidden; }
+  .cum-lbl { font-size: 9px; font-weight: 600; color: #7088a0; text-transform: uppercase; letter-spacing: 0.5px; min-width: 55px; }
+  .cum-val { font-family: var(--mono); font-size: 11px; font-weight: 500; text-align: right; min-width: 80px; }
+  .cum-val-blue { color: #3ba4ff; }
+  .cum-val-teal { color: #2ee8a8; }
+  .cum-val-steel { color: #8899aa; }
+  .cum-count { font-family: var(--mono); font-size: 9px; color: #7088a0; text-align: right; }
+
+  .hist-wrap { flex: 1; min-height: 100px; }
+  .hist-wrap canvas { height: 100%; }
+  .controls-bar { display: flex; align-items: center; padding: 0 10px; height: 28px; flex-shrink: 0; gap: 6px; }
+  .ctrl-btn { background: rgba(59,164,255,0.1); border: 1px solid rgba(59,164,255,0.25); color: #3ba4ff; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; padding: 3px 12px; border-radius: 4px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+  .ctrl-btn:hover { background: rgba(59,164,255,0.2); }
+  .ctrl-btn.active { background: rgba(59,164,255,0.3); border-color: rgba(59,164,255,0.5); }
+  .ctrl-btn-auto { min-width: 62px; }
+  .ctrl-btn-toss { min-width: 58px; }
+  .ctrl-btn-toss.hint { animation: hintPulse 1.5s ease-in-out infinite; }
+  @keyframes hintPulse { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 10px rgba(59,164,255,0.4); } }
+  .ctrl-btn-run { min-width: 62px; }
+  .ctrl-btn-reset { background: rgba(255,159,28,0.08); border-color: rgba(255,159,28,0.2); color: #ff9f1c; margin-left: auto; }
+  .ctrl-btn-reset:hover { background: rgba(255,159,28,0.18); }
+  .speed-group { display: flex; gap: 2px; background: rgba(60,130,200,0.06); border-radius: 4px; padding: 1px; }
+  .speed-btn { background: none; border: none; color: #7088a0; font-family: var(--mono); font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+  .speed-btn:hover { color: #b0c8e0; }
+  .speed-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; }
+
+  .theory { padding: 10px 14px; flex-shrink: 0; display: flex; flex-direction: column; }
+  .lang-sw { display: flex; gap: 2px; margin-bottom: 6px; background: rgba(60,130,200,0.06); border-radius: 6px; padding: 2px; width: fit-content; flex-shrink: 0; }
+  .lang-btn { background: none; border: none; color: #7088a0; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; padding: 3px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+  .lang-btn:hover { color: #b0c8e0; }
+  .lang-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; }
+
+  .tc { display: none; }
+  .tc.active { display: block; }
+  .tc h3 { font-size: 11px; font-weight: 700; color: #e8ecf0; margin-bottom: 4px; }
+  .tc p { font-size: 10px; line-height: 1.5; color: #b8c8d8; margin-bottom: 3px; }
+  .tc p strong { color: #e8ecf0; }
+  .tc .fb {
+    background: rgba(60,130,200,0.06);
+    border: 1px solid rgba(60,130,200,0.1);
+    border-radius: 6px;
+    padding: 3px 10px;
+    margin: 3px 0;
+    text-align: center;
+  }
+  .tc .fb .katex { font-size: 0.85em; color: #e8ecf0; }
+  .tc .note {
+    font-size: 9px;
+    line-height: 1.45;
+    color: #ffb84d;
+    border-left: 2px solid rgba(255,159,28,0.5);
+    padding-left: 8px;
+    margin-top: 3px;
+  }
+  .tc .note strong { color: #ffc966; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 id="title">π Coin Estimator</h1>
+    <span class="tag" id="tagLine">Probability &amp; Statistics</span>
+  </div>
+
+  <div class="top-row">
+    <div class="cbox"><canvas id="walkCanvas"></canvas></div>
+    <div class="cbox right-panel">
+      <div class="right-top">
+        <div class="coin-circle" id="coinDisp">?</div>
+        <div class="trial-info">
+          <span id="infoHTS">H:0  T:0  S:0</span><br>
+          <span id="infoTau">τ = —</span><br>
+          <span id="infoFrac">Fraction = —</span>
+        </div>
+      </div>
+      <hr class="right-sep">
+      <div class="right-bottom">
+        <div class="cum-row"><span class="cum-lbl" id="lAvg">avg</span><span class="cum-val cum-val-blue" id="vAvg">—</span></div>
+        <div class="cum-row"><span class="cum-lbl" id="lPi">π ≈</span><span class="cum-val cum-val-teal" id="vPi">—</span></div>
+        <div class="cum-row"><span class="cum-lbl">π</span><span class="cum-val cum-val-steel">3.14159265…</span></div>
+        <div class="cum-count" id="vCount"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cbox hist-wrap"><canvas id="histCanvas"></canvas></div>
+
+  <div class="controls-bar cbox">
+    <button class="ctrl-btn ctrl-btn-toss hint" id="btnToss">Toss</button>
+    <button class="ctrl-btn ctrl-btn-run" id="btnRun">Run</button>
+    <button class="ctrl-btn ctrl-btn-auto" id="btnAuto">Auto ▶</button>
+    <div class="speed-group">
+      <button class="speed-btn" data-speed="0.5">.5x</button>
+      <button class="speed-btn active" data-speed="1">1x</button>
+      <button class="speed-btn" data-speed="2">2x</button>
+      <button class="speed-btn" data-speed="5">5x</button>
+    </div>
+    <button class="ctrl-btn ctrl-btn-reset" id="btnReset">Reset</button>
+  </div>
+
+  <div class="theory cbox">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc active" id="theory-pi-en">
+      <h3>Estimating π with a Coin (Propp, 2026)</h3>
+      <p>Toss a fair coin, track <span class="k">S_n = H_n - T_n</span>. Stop at <span class="k">\tau</span> when <span class="k">S_n = +1</span>. Record <span class="k">H_\tau/\tau</span>. Half the time <span class="k">\tau=1</span> (first toss is heads, fraction = 1). Longer walks are rarer: <span class="k">\mathbb{P}(\tau\!=\!2k\!+\!1) = \tfrac{1}{2 \cdot 4^k}\tfrac{1}{k+1}\tbinom{2k}{k}</span> (Catalan numbers). The expected fraction connects to <span class="k">\pi</span> via the arcsin series:</p>
+      <div class="fb"><span class="k-block">\mathbb{E}\!\left[\frac{H_\tau}{\tau}\right] = \tfrac{1}{2}\sum_{k \ge 0}\tfrac{1}{4^k}\tfrac{1}{2k+1}\tbinom{2k}{k} = \tfrac{1}{2}\arcsin(1) = \frac{\pi}{4}</span></div>
+      <p class="note"><strong>Why the histogram peaks at 1:</strong> 50% of trials end on the first toss. But the average is pulled to <span class="k">\pi/4 \approx 0.785</span> by rarer, longer walks. Unlike Buffon's needle, only a coin is needed. Convergence: ~<span class="k">N^{-1/4}</span>.</p>
+    </div>
+
+    <div class="tc" id="theory-pi-ru">
+      <h3>Оценка π монетой (Propp, 2026)</h3>
+      <p>Бросайте монету, отслеживайте <span class="k">S_n = H_n - T_n</span>. Остановитесь при <span class="k">S_n = +1</span>. Запишите <span class="k">H_\tau/\tau</span>. В 50% случаев <span class="k">\tau=1</span> (первый бросок — орёл, дробь = 1). Длинные блуждания экспоненциально редки: <span class="k">\mathbb{P}(\tau\!=\!2k\!+\!1) = \tfrac{1}{2 \cdot 4^k}\tfrac{1}{k+1}\tbinom{2k}{k}</span> (числа Каталана). Мат. ожидание связано с <span class="k">\pi</span> через ряд арксинуса:</p>
+      <div class="fb"><span class="k-block">\mathbb{E}\!\left[\frac{H_\tau}{\tau}\right] = \tfrac{1}{2}\sum_{k \ge 0}\tfrac{1}{4^k}\tfrac{1}{2k+1}\tbinom{2k}{k} = \tfrac{1}{2}\arcsin(1) = \frac{\pi}{4}</span></div>
+      <p class="note"><strong>Почему пик на 1:</strong> 50% проб заканчиваются первым броском. Но среднее тянется к <span class="k">\pi/4 \approx 0.785</span> из-за редких длинных блужданий. В отличие от иглы Бюффона, нужна только монета. Сходимость: ~<span class="k">N^{-1/4}</span>.</p>
+    </div>
+
+    <div class="tc" id="theory-pi-tt">
+      <h3>Тәңкә белән π бәяләү (Propp, 2026)</h3>
+      <p>Тәңкә ыргытып <span class="k">S_n = H_n - T_n</span> күзәтегез. <span class="k">S_n = +1</span> булгач туктагыз. <span class="k">H_\tau/\tau</span> язып алыгыз. 50% очракта <span class="k">\tau=1</span> (беренче ыргыту — аверс, вакланма = 1). Озын йөрешләр экспоненциаль сирәк: <span class="k">\mathbb{P}(\tau\!=\!2k\!+\!1) = \tfrac{1}{2 \cdot 4^k}\tfrac{1}{k+1}\tbinom{2k}{k}</span> (Каталан саннары). Көтелмә арксинус рәте аша <span class="k">\pi</span> белән бәйле:</p>
+      <div class="fb"><span class="k-block">\mathbb{E}\!\left[\frac{H_\tau}{\tau}\right] = \tfrac{1}{2}\sum_{k \ge 0}\tfrac{1}{4^k}\tfrac{1}{2k+1}\tbinom{2k}{k} = \tfrac{1}{2}\arcsin(1) = \frac{\pi}{4}</span></div>
+      <p class="note"><strong>Нигә пик 1 дә:</strong> 50% сынаулар беренче ыргытуда бетә. Ләкин уртача <span class="k">\pi/4 \approx 0.785</span> ка тартыла, сирәк озын йөрешләр аркасында. Бюффон энәсеннән аермалы, тәңкә генә кирәк. Яклашу: ~<span class="k">N^{-1/4}</span>.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  /* ── Helpers ── */
+  const $ = id => document.getElementById(id);
+  function clearActive(sel) { document.querySelectorAll(sel).forEach(b => b.classList.remove('active')); }
+
+  const BLUE = [59,164,255], AMBER = [255,159,28], TEAL = [46,232,168], STEEL = [136,153,170], BG = '#080d14';
+  const MONO = 'JetBrains Mono';
+  function rgb(c, a=1) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+  function sizeCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const r = canvas.getBoundingClientRect();
+    canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return ctx;
+  }
+  function drawGlow(ctx, x, y, r, color) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgb(color, 0.3)); g.addColorStop(1, rgb(color, 0));
+    ctx.fillStyle = g; ctx.fillRect(x-r, y-r, r*2, r*2);
+  }
+
+  /* ── i18n ── */
+  let lang = 'en';
+  function T(k) { const e = T._[k]; if (!e) return k; return e[lang] || e.en; }
+  T._ = {
+    title:    { en: 'π Coin Estimator',        ru: 'Оценка π монетой',           tt: 'Тәңкә белән π бәяләү' },
+    tagLine:  { en: 'Probability & Statistics', ru: 'Теория вероятностей',        tt: 'Ихтималлык теориясе' },
+    walk:     { en: 'RANDOM WALK',              ru: 'СЛУЧАЙНОЕ БЛУЖДАНИЕ',        tt: 'ОЧРАКЛЫ ЙӨРЕШ' },
+    dist:     { en: 'DISTRIBUTION',             ru: 'РАСПРЕДЕЛЕНИЕ',              tt: 'БҮЛЕНЕШ' },
+    frac:     { en: 'Fraction',                 ru: 'Дробь',                      tt: 'Вакланма' },
+    avg:      { en: 'avg',                      ru: 'средн.',                     tt: 'уртача' },
+    piApprox: { en: 'π ≈',                     ru: 'π ≈',                        tt: 'π ≈' },
+    toss:     { en: 'Toss',                     ru: 'Бросить',                    tt: 'Ыргыту' },
+    runTrial: { en: 'Run',                      ru: 'Запуск',                     tt: 'Йөгертү' },
+    autoOn:   { en: 'Auto ■',                   ru: 'Авто ■',                     tt: 'Авто ■' },
+    autoOff:  { en: 'Auto ▶',                   ru: 'Авто ▶',                     tt: 'Авто ▶' },
+    reset:    { en: 'Reset',                    ru: 'Сброс',                      tt: 'Ташлау' },
+  };
+
+  /* ── KaTeX ── */
+  document.querySelectorAll('.k').forEach(el => katex.render(el.textContent, el, { throwOnError: false }));
+  document.querySelectorAll('.k-block').forEach(el => katex.render(el.textContent, el, { throwOnError: false, displayMode: true }));
+
+  /* ── State ── */
+  let walk = [0];
+  let coins = [];
+  let curHeads = 0;
+  let trialDone = false;
+  let trials = [];
+  let runningSum = 0;
+  let autoMode = false;
+  let speed = 1;
+  let autoTimer = 0;
+  let glowAlpha = 0;
+  let histBins = {};
+
+  /* ── Canvas refs ── */
+  const walkCanvas = $('walkCanvas');
+  const histCanvas = $('histCanvas');
+  let wCtx, hCtx, wW, wH, hW, hH;
+
+  function resize() {
+    wCtx = sizeCanvas(walkCanvas);
+    hCtx = sizeCanvas(histCanvas);
+    const wr = walkCanvas.getBoundingClientRect();
+    const hr = histCanvas.getBoundingClientRect();
+    wW = wr.width; wH = wr.height; hW = hr.width; hH = hr.height;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ── Algorithm ── */
+  function toss() {
+    const flip = Math.random() < 0.5 ? 'H' : 'T';
+    coins.push(flip);
+    if (flip === 'H') curHeads++;
+    walk.push(walk[walk.length - 1] + (flip === 'H' ? 1 : -1));
+    if (walk[walk.length - 1] >= 1) completeTrial();
+  }
+
+  function doToss() {
+    if (trialDone) startNewWalk();
+    toss();
+    updateUI();
+  }
+
+  function runOneTrial() {
+    if (trialDone) startNewWalk();
+    while (!trialDone) toss();
+    updateUI();
+  }
+
+  function completeTrial() {
+    trialDone = true;
+    glowAlpha = 1;
+    const tau = coins.length;
+    const frac = curHeads / tau;
+    runningSum += frac;
+    trials.push({ tau, heads: curHeads, frac });
+    const key = curHeads + '/' + tau;
+    if (!histBins[key]) histBins[key] = { frac, count: 0 };
+    histBins[key].count++;
+  }
+
+  function startNewWalk() {
+    walk = [0]; coins = []; curHeads = 0; trialDone = false;
+  }
+
+  function resetAll() {
+    walk = [0]; coins = []; curHeads = 0; trialDone = false;
+    trials = []; runningSum = 0; histBins = {};
+    autoMode = false; glowAlpha = 0;
+    $('btnAuto').textContent = T('autoOff');
+    $('btnAuto').classList.remove('active');
+    updateUI();
+  }
+
+  /* ── UI update ── */
+  function updateUI() {
+    const n = trials.length;
+    const curT = coins.length - curHeads;
+    const s = curHeads - curT;
+
+    // Coin display
+    const coinEl = $('coinDisp');
+    if (coins.length > 0) {
+      const last = coins[coins.length - 1];
+      coinEl.textContent = last;
+      coinEl.className = 'coin-circle ' + (last === 'H' ? 'heads' : 'tails');
+    } else {
+      coinEl.textContent = '?';
+      coinEl.className = 'coin-circle';
+    }
+
+    // Trial info — direct textContent updates
+    $('infoHTS').textContent = `H:${curHeads}  T:${curT}  S:${s > 0 ? '+' : ''}${s}`;
+    if (!trialDone && coins.length > 0) {
+      $('infoTau').textContent = `τ = ${coins.length}\u2026`;
+      $('infoFrac').textContent = `${T('frac')} = \u2014`;
+    } else if (n > 0) {
+      const last = trials[n - 1];
+      $('infoTau').textContent = `τ = ${last.tau}`;
+      $('infoFrac').textContent = `${T('frac')} = ${last.heads}/${last.tau}`;
+    } else {
+      $('infoTau').textContent = 'τ = \u2014';
+      $('infoFrac').textContent = `${T('frac')} = \u2014`;
+    }
+
+    // Cumulative
+    if (n > 0) {
+      const avg = runningSum / n;
+      const dec = n < 10 ? 4 : n < 100 ? 5 : 6;
+      $('vAvg').textContent = avg.toFixed(dec);
+      $('vPi').textContent = (4 * avg).toFixed(dec);
+      $('vCount').textContent = '#' + n;
+    } else {
+      $('vAvg').textContent = '\u2014';
+      $('vPi').textContent = '\u2014';
+      $('vCount').textContent = '';
+    }
+  }
+
+  /* ── Draw: random walk ── */
+  function drawWalk() {
+    const W = wW, H = wH;
+    const ctx = wCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l: 36, r: 14, t: 20, b: 14 };
+    const dW = W - pad.l - pad.r, dH = H - pad.t - pad.b;
+    const steps = walk.length - 1;
+
+    let minS = 0, maxS = 1;
+    for (const v of walk) { minS = Math.min(minS, v); maxS = Math.max(maxS, v); }
+    maxS = Math.max(maxS, 2); minS = Math.min(minS, -2);
+    const rangeS = maxS - minS || 1;
+
+    const yOf = v => pad.t + dH * (1 - (v - minS) / rangeS);
+    const xSteps = Math.max(steps, 5); // min 5 steps on X-axis so short walks don't stretch
+    const xOf = i => pad.l + (i / xSteps) * dW;
+
+    // Label
+    ctx.font = '600 8px Inter'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(STEEL, 0.5); ctx.fillText(T('walk'), pad.l, 13);
+
+    // Zero line
+    const y0 = yOf(0);
+    ctx.strokeStyle = rgb(STEEL, 0.25); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(W - pad.r, y0); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `500 8px ${MONO}`; ctx.textAlign = 'right'; ctx.fillStyle = rgb(STEEL, 0.5);
+    ctx.fillText('0', pad.l - 5, y0 + 3);
+
+    // Threshold +1
+    const y1 = yOf(1);
+    ctx.strokeStyle = rgb(AMBER, 0.4); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(pad.l, y1); ctx.lineTo(W - pad.r, y1); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = rgb(AMBER, 0.6); ctx.fillText('+1', pad.l - 5, y1 + 3);
+
+    if (steps === 0) return;
+
+    // Walk path
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.85); ctx.lineWidth = 2;
+    for (let i = 0; i <= steps; i++) {
+      const x = xOf(i), y = yOf(walk[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // H/T labels
+    if (steps <= 100) {
+      ctx.font = `500 7px ${MONO}`; ctx.textAlign = 'center';
+      for (let i = 0; i < coins.length; i++) {
+        const x = xOf(i + 1);
+        ctx.fillStyle = coins[i] === 'H' ? rgb(TEAL, 0.6) : rgb(AMBER, 0.5);
+        ctx.fillText(coins[i], x, pad.t - 5);
+      }
+    }
+
+    // Dots
+    if (steps <= 100) {
+      for (let i = 0; i <= steps; i++) {
+        ctx.beginPath(); ctx.arc(xOf(i), yOf(walk[i]), 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = rgb(BLUE, 0.7); ctx.fill();
+      }
+    }
+
+    // Glow + fraction at endpoint
+    if (trialDone && glowAlpha > 0.01) {
+      const ex = xOf(steps), ey = yOf(1);
+      drawGlow(ctx, ex, ey, 22, TEAL);
+      ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+      ctx.fillStyle = rgb(TEAL, glowAlpha); ctx.fill();
+
+      if (trials.length > 0) {
+        const last = trials[trials.length - 1];
+        ctx.font = `600 11px ${MONO}`; ctx.textAlign = 'center';
+        ctx.fillStyle = rgb(TEAL, Math.min(1, glowAlpha));
+        ctx.fillText(last.heads + '/' + last.tau, ex, ey - 14);
+      }
+    }
+  }
+
+  /* ── Draw: histogram ── */
+  function drawHist() {
+    const W = hW, H = hH;
+    const ctx = hCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l: 36, r: 14, t: 18, b: 22 };
+    const dW = W - pad.l - pad.r, dH = H - pad.t - pad.b;
+
+    // Label
+    ctx.font = '600 8px Inter'; ctx.textAlign = 'right';
+    ctx.fillStyle = rgb(STEEL, 0.5); ctx.fillText(T('dist'), W - pad.r, 13);
+
+    // X-axis range: 0.5 to 1.0
+    const xMin = 0.48, xRange = 0.56;
+    const xOf = v => pad.l + ((v - xMin) / xRange) * dW;
+
+    // X-axis line
+    ctx.strokeStyle = rgb(STEEL, 0.15); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, pad.t + dH); ctx.lineTo(W - pad.r, pad.t + dH); ctx.stroke();
+
+    // X-axis tick labels
+    ctx.font = `500 7px ${MONO}`; ctx.textAlign = 'center'; ctx.fillStyle = rgb(STEEL, 0.4);
+    for (const v of [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) {
+      const x = xOf(v);
+      ctx.fillText(v.toFixed(1), x, pad.t + dH + 12);
+    }
+
+    // π/4 reference line
+    const piOver4 = Math.PI / 4;
+    const xPi = xOf(piOver4);
+    ctx.strokeStyle = rgb(TEAL, 0.5); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(xPi, pad.t); ctx.lineTo(xPi, pad.t + dH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `500 8px ${MONO}`; ctx.textAlign = 'center';
+    ctx.fillStyle = rgb(TEAL, 0.7); ctx.fillText('π/4', xPi, pad.t - 4);
+
+    // Average line
+    if (trials.length > 0) {
+      const avg = runningSum / trials.length;
+      const xA = xOf(avg);
+      ctx.strokeStyle = rgb(BLUE, 0.5); ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(xA, pad.t); ctx.lineTo(xA, pad.t + dH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = rgb(BLUE, 0.7);
+      ctx.fillText(T('avg'), xA, pad.t + dH + 20);
+    }
+
+    // Bins as dot stacks
+    const binKeys = Object.keys(histBins);
+    if (binKeys.length === 0) return;
+
+    let maxCount = 0;
+    for (const k of binKeys) maxCount = Math.max(maxCount, histBins[k].count);
+
+    const dotR = Math.min(4, dH / (maxCount + 1) / 2.2, 8);
+    const dotSpacing = dotR * 2.2;
+
+    // Sort bins by fraction for overlap detection
+    const sortedBins = binKeys.map(k => ({k, ...histBins[k]})).sort((a,b) => a.frac - b.frac);
+    let lastLabelX = -Infinity;
+    for (const bin of sortedBins) {
+      const x = xOf(bin.frac);
+      for (let i = 0; i < bin.count; i++) {
+        const y = pad.t + dH - dotSpacing * (i + 0.5);
+        if (y < pad.t) break;
+        ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = rgb(BLUE, 0.6); ctx.fill();
+      }
+      // Fraction label — only if enough space from previous label
+      if (dotR >= 2.5 && bin.count > 0 && x - lastLabelX > 28) {
+        ctx.font = `500 6px ${MONO}`; ctx.textAlign = 'center';
+        ctx.fillStyle = rgb(STEEL, 0.35);
+        ctx.fillText(bin.k, x, pad.t + dH + 6);
+        lastLabelX = x;
+      }
+    }
+  }
+
+  function drawAll() { drawWalk(); drawHist(); }
+
+  /* ── Controls ── */
+  function stopHint() { $('btnToss').classList.remove('hint'); }
+  $('btnToss').addEventListener('click', () => { stopHint(); doToss(); drawAll(); });
+  $('btnRun').addEventListener('click', () => { stopHint(); runOneTrial(); drawAll(); });
+  $('btnReset').addEventListener('click', resetAll);
+
+  $('btnAuto').addEventListener('click', () => {
+    stopHint(); autoMode = !autoMode;
+    $('btnAuto').textContent = autoMode ? T('autoOn') : T('autoOff');
+    $('btnAuto').classList.toggle('active', autoMode);
+  });
+
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      clearActive('.speed-btn');
+      btn.classList.add('active');
+      speed = parseFloat(btn.dataset.speed);
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === ' ') { e.preventDefault(); $('btnAuto').click(); }
+  });
+
+  /* ── Language ── */
+  function updateLang(newLang) {
+    lang = newLang;
+    document.documentElement.lang = lang;
+    clearActive('.lang-btn');
+    document.querySelector(`.lang-btn[data-lang="${lang}"]`).classList.add('active');
+    clearActive('.tc');
+    $('theory-pi-' + lang).classList.add('active');
+
+    $('title').textContent = T('title');
+    $('tagLine').textContent = T('tagLine');
+    $('lAvg').textContent = T('avg');
+    $('lPi').textContent = T('piApprox');
+    $('btnToss').textContent = T('toss');
+    $('btnRun').textContent = T('runTrial');
+    $('btnAuto').textContent = autoMode ? T('autoOn') : T('autoOff');
+    $('btnReset').textContent = T('reset');
+    updateUI();
+    drawAll();
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => updateLang(btn.dataset.lang));
+  });
+
+  /* ── Auto-run loop ── */
+  let lastTime = 0;
+  function loop(time) {
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
+    lastTime = time;
+
+    if (glowAlpha > 0) glowAlpha = Math.max(0, glowAlpha - dt * 2);
+
+    if (autoMode) {
+      autoTimer += dt * speed;
+      const interval = 0.12;
+      const batch = Math.min(Math.floor(autoTimer / interval), 20);
+      for (let i = 0; i < batch; i++) { autoTimer -= interval; runOneTrial(); }
+    }
+
+    drawAll();
+    requestAnimationFrame(loop);
+  }
+
+  /* ── Init ── */
+  updateLang('en');
+  updateUI();
+  drawAll();
+  requestAnimationFrame(time => { lastTime = time; loop(time); });
+})();
+</script>
+</body>
+</html>

@@ -7,7 +7,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root { --mono: 'JetBrains Mono', monospace; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
@@ -35,6 +36,7 @@
     align-items: center;
     flex-shrink: 0;
     height: 20px;
+    overflow: hidden;
   }
   .header h1 { font-size: 14px; font-weight: 700; color: #e8ecf0; }
   .header .tag { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7088a0; }
@@ -55,16 +57,14 @@
   }
 
   .controls-box {
-    background: rgba(60,130,200,0.03);
-    border: 1px solid rgba(60,130,200,0.1);
-    border-radius: 8px;
     padding: 8px 10px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 4px;
   }
 
+  .ctrl-group { flex-shrink: 0; }
   .ctrl-group label {
     display: block;
     font-size: 8px;
@@ -73,6 +73,7 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 3px;
+    min-width: 80px;
   }
 
   .sig-btns {
@@ -83,7 +84,7 @@
     background: rgba(60,130,200,0.06);
     border: 1px solid rgba(60,130,200,0.1);
     color: #7088a0;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 9px;
     font-weight: 500;
     padding: 3px 7px;
@@ -96,9 +97,13 @@
 
   .sig-formula {
     margin-top: 2px;
-    min-height: 14px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
   }
-  .sig-formula .katex { font-size: 0.72em; }
+  .sig-formula .katex { font-size: 0.65em; }
+  .f-formula-color { color: rgba(59,164,255,0.85); }
+  .g-formula-color { color: rgba(255,159,28,0.85); }
 
   .ctrl-group input[type="range"] {
     -webkit-appearance: none;
@@ -126,25 +131,27 @@
     gap: 8px;
   }
   .ctrl-row .val {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 11px;
     font-weight: 500;
     color: #e8ecf0;
     min-width: 42px;
     text-align: right;
   }
+  .ctrl-row-spread { justify-content: space-between; height: 26px; overflow: hidden; flex-shrink: 0; }
 
   .play-btn {
     background: rgba(59,164,255,0.12);
     border: 1px solid rgba(59,164,255,0.2);
     color: #3ba4ff;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 10px;
     font-weight: 600;
     padding: 3px 10px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
+    min-width: 82px;
   }
   .play-btn:hover { background: rgba(59,164,255,0.2); }
 
@@ -152,10 +159,12 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 9px;
     font-weight: 600;
     color: #7088a0;
+    min-width: 70px;
+    text-align: right;
   }
 
   .mid-row {
@@ -166,9 +175,6 @@
   }
 
   .theory {
-    background: rgba(60,130,200,0.03);
-    border: 1px solid rgba(60,130,200,0.1);
-    border-radius: 8px;
     padding: 10px 14px;
     flex: 1;
     min-height: 0;
@@ -188,19 +194,19 @@
   .lang-btn:hover { color: #b0c8e0; }
   .lang-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; }
 
-  .tc { display: none; }
+  .tc { display: none; overflow: hidden; }
   .tc.active { display: block; }
   .tc h3 { font-size: 11px; font-weight: 700; color: #e8ecf0; margin-bottom: 4px; }
   .tc p { font-size: 11px; line-height: 1.5; color: #b8c8d8; margin-bottom: 4px; }
   .tc p strong { color: #e8ecf0; }
   .tc .fb {
     background: rgba(60,130,200,0.06); border: 1px solid rgba(60,130,200,0.1);
-    border-radius: 6px; padding: 4px 10px; margin: 4px 0; text-align: center;
+    border-radius: 6px; padding: 3px 10px; margin: 3px 0; text-align: center;
   }
-  .tc .fb .katex { font-size: 0.9em; color: #e8ecf0; }
+  .tc .fb .katex { font-size: 0.85em; color: #e8ecf0; }
   .tc .note {
-    font-size: 10px; line-height: 1.45; color: #ffb84d;
-    border-left: 2px solid rgba(255,159,28,0.5); padding-left: 8px; margin-top: 4px;
+    font-size: 9px; line-height: 1.45; color: #ffb84d;
+    border-left: 2px solid rgba(255,159,28,0.5); padding-left: 8px; margin-top: 3px;
   }
   .tc .note strong { color: #ffc966; }
 </style>
@@ -215,35 +221,35 @@
 
   <div class="top-row">
     <div class="cbox"><canvas id="inputCanvas" height="120"></canvas></div>
-    <div class="controls-box">
+    <div class="cbox controls-box">
       <div class="ctrl-group">
-        <label>Signal f(τ)</label>
+        <label id="labelF">Signal f(τ)</label>
         <div class="sig-btns" id="fBtns">
           <button class="sig-btn active" data-sig="rect">rect</button>
           <button class="sig-btn" data-sig="tri">tri</button>
           <button class="sig-btn" data-sig="gauss">gauss</button>
           <button class="sig-btn" data-sig="exp">exp</button>
         </div>
-        <div class="sig-formula" id="fFormula" style="color:rgba(59,164,255,0.85)"></div>
+        <div class="sig-formula f-formula-color" id="fFormula"></div>
       </div>
       <div class="ctrl-group">
-        <label>Signal g(τ)</label>
+        <label id="labelG">Signal g(τ)</label>
         <div class="sig-btns" id="gBtns">
           <button class="sig-btn active" data-sig="rect">rect</button>
           <button class="sig-btn" data-sig="tri">tri</button>
           <button class="sig-btn" data-sig="gauss">gauss</button>
           <button class="sig-btn" data-sig="exp">exp</button>
         </div>
-        <div class="sig-formula" id="gFormula" style="color:rgba(255,159,28,0.85)"></div>
+        <div class="sig-formula g-formula-color" id="gFormula"></div>
       </div>
       <div class="ctrl-group">
-        <label>Position t</label>
+        <label id="labelT">Position t</label>
         <div class="ctrl-row">
           <input type="range" id="tSlider" min="-3" max="3" step="0.02" value="-3">
           <span class="val" id="tVal">-3.0</span>
         </div>
       </div>
-      <div class="ctrl-row" style="justify-content:space-between">
+      <div class="ctrl-row ctrl-row-spread">
         <button class="play-btn" id="playBtn">▶ PLAY</button>
         <span class="status-line" id="areaText">area = 0.00</span>
       </div>
@@ -255,14 +261,14 @@
     <div class="cbox"><canvas id="convCanvas" height="130"></canvas></div>
   </div>
 
-  <div class="theory">
+  <div class="cbox theory">
     <div class="lang-sw">
       <button class="lang-btn active" data-lang="en">EN</button>
       <button class="lang-btn" data-lang="ru">RU</button>
       <button class="lang-btn" data-lang="tt">TT</button>
     </div>
 
-    <div class="tc active" id="theory-en">
+    <div class="tc active" id="theory-conv-en">
       <h3>Convolution</h3>
       <p>The convolution of two signals <span class="k">f</span> and <span class="k">g</span> produces a new signal describing how the shape of one is "smeared" by the other:</p>
       <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
@@ -270,7 +276,7 @@
       <p class="note"><strong>LTI (Linear Time-Invariant) systems:</strong> if <span class="k">f</span> is the input and <span class="k">g</span> is the <strong>impulse response</strong> (the system's output when the input is a unit impulse <span class="k">\delta(t)</span>), then <span class="k">f*g</span> is the system output. Convolution is the fundamental operation of all LTI systems.</p>
     </div>
 
-    <div class="tc" id="theory-ru">
+    <div class="tc" id="theory-conv-ru">
       <h3>Свёртка</h3>
       <p>Свёртка двух сигналов <span class="k">f</span> и <span class="k">g</span> порождает новый сигнал, описывающий «размазывание» формы одного по другому:</p>
       <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
@@ -278,7 +284,7 @@
       <p class="note"><strong>ЛСИ (линейные стационарные, инвариантные во времени) системы:</strong> если <span class="k">f</span> — вход, а <span class="k">g</span> — <strong>импульсная характеристика</strong> (отклик системы на единичный импульс <span class="k">\delta(t)</span>), то <span class="k">f*g</span> — выход системы. Свёртка — фундаментальная операция всех ЛСИ-систем.</p>
     </div>
 
-    <div class="tc" id="theory-tt">
+    <div class="tc" id="theory-conv-tt">
       <h3>Свёртка (Конволюция)</h3>
       <p><span class="k">f</span> һәм <span class="k">g</span> сигналларының свёрткасы яңа сигнал барлыкка китерә — берсенең формасы икенчесе буенча «таралуын» күрсәтә:</p>
       <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
@@ -291,17 +297,72 @@
 
 <script>
 (() => {
+  // ---- HELPERS ----
+  const $ = id => document.getElementById(id);
+  function clearActive(sel) { document.querySelectorAll(sel).forEach(b => b.classList.remove('active')); }
+
+  // ---- i18n ----
+  let lang = 'en';
+  function T(k) { const e = T._[k]; if (!e) return k; return e[lang] || e.en; }
+  function TF(k, ...a) { const e = T._[k]; if (!e) return k; const f = e[lang] || e.en; return typeof f === 'function' ? f(...a) : f; }
+  T._ = {
+    labelF:       { en: 'Signal f(τ)', ru: 'Сигнал f(τ)', tt: 'Сигнал f(τ)' },
+    labelG:       { en: 'Signal g(τ)', ru: 'Сигнал g(τ)', tt: 'Сигнал g(τ)' },
+    labelT:       { en: 'Position t',  ru: 'Позиция t',   tt: 'Позиция t' },
+    play:         { en: '▶ PLAY',      ru: '▶ ПУСК',      tt: '▶ УЙНАТ' },
+    pause:        { en: '⏸ PAUSE',     ru: '⏸ ПАУЗА',     tt: '⏸ ТУКТА' },
+    inputSignals: { en: 'INPUT SIGNALS', ru: 'ВХОДНЫЕ СИГНАЛЫ', tt: 'КЕРТҮ СИГНАЛЛАРЫ' },
+    product:      { en: 'PRODUCT',     ru: 'ПРОИЗВЕДЕНИЕ', tt: 'ТАПКЫРЛАУ' },
+    convResult:   { en: 'CONVOLUTION RESULT', ru: 'РЕЗУЛЬТАТ СВЁРТКИ', tt: 'КОНВОЛЮЦИЯ НӘТИҖӘСЕ' },
+    area:         { en: (v) => `S = ${v}`, ru: (v) => `S = ${v}`, tt: (v) => `S = ${v}` },
+    productLeg:   { en: 'f(τ)·g(t−τ)', ru: 'f(τ)·g(t−τ)', tt: 'f(τ)·g(t−τ)' },
+  };
+
+  function updateUIText() {
+    $('labelF').textContent = T('labelF');
+    $('labelG').textContent = T('labelG');
+    $('labelT').textContent = T('labelT');
+    $('playBtn').textContent = playing ? T('pause') : T('play');
+  }
+
+  // ---- KaTeX rendering ----
   document.querySelectorAll('.k').forEach(el => katex.render(el.textContent, el, { throwOnError: false }));
   document.querySelectorAll('.k-block').forEach(el => katex.render(el.textContent, el, { throwOnError: false, displayMode: true }));
 
+  // ---- LANGUAGE SWITCH ----
+  function updateTheory() {
+    clearActive('.tc');
+    const el = $('theory-conv-' + lang);
+    if (el) el.classList.add('active');
+  }
+
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tc').forEach(c => c.classList.remove('active'));
+      clearActive('.lang-btn');
       btn.classList.add('active');
-      document.getElementById('theory-' + btn.dataset.lang).classList.add('active');
+      lang = btn.dataset.lang;
+      document.documentElement.lang = lang;
+      updateTheory();
+      updateUIText();
     });
   });
+
+  // ---- THEORY HEIGHT LOCK ----
+  function lockTheoryHeight() {
+    const blocks = document.querySelectorAll('.tc');
+    let maxH = 0;
+    blocks.forEach(b => {
+      b.classList.add('active');
+      maxH = Math.max(maxH, b.scrollHeight);
+    });
+    blocks.forEach(b => b.classList.remove('active'));
+    updateTheory();
+    const theoryEl = document.querySelector('.theory');
+    if (maxH > 0) {
+      theoryEl.style.height = theoryEl.offsetHeight + 'px';
+      theoryEl.style.overflow = 'hidden';
+    }
+  }
 
   // ---- SIGNALS ----
   const signals = {
@@ -318,8 +379,8 @@
     exp:  'h(\\tau)=e^{-2.5\\tau}\\,u(\\tau)',
   };
 
-  const fFormulaEl = document.getElementById('fFormula');
-  const gFormulaEl = document.getElementById('gFormula');
+  const fFormulaEl = $('fFormula');
+  const gFormulaEl = $('gFormula');
 
   function renderFormula(el, sigType) {
     katex.render(sigFormulas[sigType], el, { throwOnError: false, displayMode: false });
@@ -330,9 +391,9 @@
   renderFormula(gFormulaEl, gType);
 
   function setupBtns(containerId, setter, formulaEl) {
-    document.getElementById(containerId).querySelectorAll('.sig-btn').forEach(btn => {
+    $(containerId).querySelectorAll('.sig-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.getElementById(containerId).querySelectorAll('.sig-btn').forEach(b => b.classList.remove('active'));
+        $(containerId).querySelectorAll('.sig-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         setter(btn.dataset.sig);
         renderFormula(formulaEl, btn.dataset.sig);
@@ -344,16 +405,16 @@
   setupBtns('gBtns', s => { gType = s; }, gFormulaEl);
 
   // ---- CANVASES ----
-  const inputCanvas = document.getElementById('inputCanvas');
-  const productCanvas = document.getElementById('productCanvas');
-  const convCanvas = document.getElementById('convCanvas');
+  const inputCanvas  = $('inputCanvas');
+  const productCanvas = $('productCanvas');
+  const convCanvas   = $('convCanvas');
   const iCtx = inputCanvas.getContext('2d');
   const pCtx = productCanvas.getContext('2d');
   const cCtx = convCanvas.getContext('2d');
-  const tSlider = document.getElementById('tSlider');
-  const tValEl = document.getElementById('tVal');
-  const playBtn = document.getElementById('playBtn');
-  const areaText = document.getElementById('areaText');
+  const tSlider = $('tSlider');
+  const tValEl  = $('tVal');
+  const playBtn = $('playBtn');
+  const areaText = $('areaText');
 
   let tPos = -3;
   let playing = false;
@@ -363,16 +424,27 @@
     tValEl.textContent = tPos.toFixed(1);
   });
 
-  playBtn.addEventListener('click', () => {
+  function togglePlay() {
     playing = !playing;
     if (playing) {
-      playBtn.textContent = '⏸ PAUSE';
+      playBtn.textContent = T('pause');
       if (tPos >= 2.9) tPos = -3;
     } else {
-      playBtn.textContent = '▶ PLAY';
+      playBtn.textContent = T('play');
+    }
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+
+  // ---- KEYBOARD SHORTCUTS ----
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    switch(e.key) {
+      case ' ': e.preventDefault(); togglePlay(); break;
     }
   });
 
+  // ---- COLORS & CANVAS HELPERS ----
   const BLUE  = [59,164,255];
   const AMBER = [255,159,28];
   const STEEL = [136,153,170];
@@ -444,7 +516,6 @@
   function drawAxes(ctx, co, xMin, xMax, label) {
     ctx.strokeStyle = 'rgba(136,153,170,0.1)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(co.pad.l, co.midY); ctx.lineTo(co.W - co.pad.r, co.midY); ctx.stroke();
-    // vertical at 0
     const zx = co.toX(0);
     if (zx > co.pad.l && zx < co.W - co.pad.r) {
       ctx.strokeStyle = 'rgba(136,153,170,0.06)';
@@ -462,7 +533,7 @@
     const pad = {l:16,r:16,t:16,b:16};
     const co = makeCoords(W, H, pad, -3.5, 3.5);
     const amp = co.drawH * 0.38;
-    drawAxes(ctx, co, -3.5, 3.5, 'INPUT SIGNALS');
+    drawAxes(ctx, co, -3.5, 3.5, T('inputSignals'));
 
     const f = signals[fType], g = signals[gType];
 
@@ -494,7 +565,6 @@
       ctx.font = '500 9px JetBrains Mono'; ctx.fillStyle = rgb(AMBER, 0.7); ctx.textAlign = 'center';
       ctx.fillText('t=' + tPos.toFixed(1), tx, pad.t - 3);
     }
-
   }
 
   // ---- DRAW PRODUCT ----
@@ -505,19 +575,17 @@
     const pad = {l:14,r:14,t:18,b:18};
     const co = makeCoords(W, H, pad, -3.5, 3.5);
     const amp = co.drawH * 0.4;
-    drawAxes(ctx, co, -3.5, 3.5, 'PRODUCT');
+    drawAxes(ctx, co, -3.5, 3.5, T('product'));
 
     const f = signals[fType], g = signals[gType];
 
     // Filled product area
     ctx.beginPath();
     ctx.moveTo(pad.l, co.midY);
-    let area = 0;
     const dtau = 7 / co.drawW;
     for (let px = 0; px <= co.drawW; px++) {
       const tau = -3.5 + (px / co.drawW) * 7;
       const val = f(tau) * g(tPos - tau);
-      area += val * dtau;
       ctx.lineTo(pad.l + px, co.toY(val, amp));
     }
     ctx.lineTo(pad.l + co.drawW, co.midY);
@@ -539,13 +607,13 @@
     }
     ctx.stroke();
 
-    // Area label — use precomputed convolution for consistency with the curve
+    // Area label
     const convArea = getConvAt(Math.max(CONV_T_MIN, Math.min(CONV_T_MAX, tPos)));
-    areaText.textContent = `area = ${convArea.toFixed(3)}`;
+    areaText.textContent = TF('area', convArea.toFixed(3));
 
     // Legend
     ctx.font = '600 8px JetBrains Mono'; ctx.textAlign = 'left';
-    ctx.fillStyle = rgb(TEAL, 0.7); ctx.fillText('f(τ)·g(t−τ)', pad.l + 4, pad.t + 8);
+    ctx.fillStyle = rgb(TEAL, 0.7); ctx.fillText(T('productLeg'), pad.l + 4, pad.t + 8);
   }
 
   // ---- DRAW CONVOLUTION RESULT ----
@@ -561,7 +629,7 @@
     for (let i = 0; i < CONV_STEPS; i++) maxVal = Math.max(maxVal, Math.abs(convResult[i]));
     const amp = co.drawH * 0.42 / maxVal;
 
-    drawAxes(ctx, co, CONV_T_MIN, CONV_T_MAX, '(f * g)(t)');
+    drawAxes(ctx, co, CONV_T_MIN, CONV_T_MAX, T('convResult'));
 
     // Full convolution curve
     ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.3); ctx.lineWidth = 1.5;
@@ -609,6 +677,10 @@
 
   // ---- INIT & LOOP ----
   resize();
+  updateUIText();
+
+  // Lock theory height after layout settles
+  requestAnimationFrame(() => { requestAnimationFrame(lockTheoryHeight); });
 
   function draw(dt) {
     if (playing) {

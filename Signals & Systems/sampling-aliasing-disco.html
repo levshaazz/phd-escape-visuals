@@ -7,7 +7,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root { --mono: 'JetBrains Mono', monospace; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
@@ -35,6 +36,7 @@
     align-items: center;
     flex-shrink: 0;
     height: 20px;
+    overflow: hidden;
   }
   .header h1 { font-size: 14px; font-weight: 700; color: #e8ecf0; }
   .header .tag { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7088a0; }
@@ -55,9 +57,6 @@
   }
 
   .controls-box {
-    background: rgba(60,130,200,0.03);
-    border: 1px solid rgba(60,130,200,0.1);
-    border-radius: 8px;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
@@ -73,6 +72,7 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 3px;
+    min-width: 120px;
   }
 
   .ctrl-group input[type="range"] {
@@ -97,7 +97,7 @@
   }
 
   .ctrl-group .val {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 12px;
     font-weight: 500;
     color: #e8ecf0;
@@ -108,12 +108,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 10px;
     font-weight: 600;
     margin-top: 2px;
+    height: 16px;
+    overflow: hidden;
   }
-  .status-line .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; }
 
   .mid-row {
     display: grid;
@@ -123,9 +125,6 @@
   }
 
   .theory {
-    background: rgba(60,130,200,0.03);
-    border: 1px solid rgba(60,130,200,0.1);
-    border-radius: 8px;
     padding: 10px 14px;
     flex: 1;
     min-height: 0;
@@ -166,19 +165,19 @@
     background: rgba(60,130,200,0.06);
     border: 1px solid rgba(60,130,200,0.1);
     border-radius: 6px;
-    padding: 4px 10px;
-    margin: 4px 0;
+    padding: 3px 10px;
+    margin: 3px 0;
     text-align: center;
   }
-  .tc .fb .katex { font-size: 0.9em; color: #e8ecf0; }
+  .tc .fb .katex { font-size: 0.85em; color: #e8ecf0; }
 
   .tc .note {
-    font-size: 10px;
+    font-size: 9px;
     line-height: 1.45;
     color: #ffb84d;
     border-left: 2px solid rgba(255,159,28,0.5);
     padding-left: 8px;
-    margin-top: 4px;
+    margin-top: 3px;
   }
   .tc .note strong { color: #ffc966; }
 </style>
@@ -187,26 +186,26 @@
 <div class="app">
 
   <div class="header">
-    <h1>Sampling &amp; Aliasing Disco</h1>
-    <span class="tag">Signals &amp; Systems</span>
+    <h1 id="title">Sampling &amp; Aliasing Disco</h1>
+    <span class="tag" id="tagLine">Signals &amp; Systems</span>
   </div>
 
   <div class="top-row">
     <div class="cbox"><canvas id="waveCanvas" height="120"></canvas></div>
-    <div class="controls-box">
+    <div class="controls-box cbox">
       <div class="ctrl-group">
-        <label>Signal freq</label>
+        <label id="labelFreq">Signal freq</label>
         <input type="range" id="freqSlider" min="0.5" max="20" step="0.1" value="3">
-        <span class="val" id="freqVal">3.0 Hz</span>
+        <span class="val" id="freqVal"></span>
       </div>
       <div class="ctrl-group">
-        <label>Sample rate</label>
+        <label id="labelRate">Sample rate</label>
         <input type="range" id="sampleSlider" min="1" max="40" step="0.5" value="8">
-        <span class="val" id="sampleVal">8.0 Hz</span>
+        <span class="val" id="sampleVal"></span>
       </div>
       <div class="status-line" id="statusBar">
-        <span class="dot" id="statusDot"></span>
-        <span id="statusText">Nyquist OK</span>
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText"></span>
       </div>
     </div>
   </div>
@@ -216,7 +215,7 @@
     <div class="cbox"><canvas id="specCanvas" height="160"></canvas></div>
   </div>
 
-  <div class="theory">
+  <div class="theory cbox">
     <div class="lang-sw">
       <button class="lang-btn active" data-lang="en">EN</button>
       <button class="lang-btn" data-lang="ru">RU</button>
@@ -255,38 +254,68 @@
 
 <script>
 (() => {
+  /* ── Helpers ── */
+  const $ = id => document.getElementById(id);
+  function clearActive(sel) { document.querySelectorAll(sel).forEach(b => b.classList.remove('active')); }
+
+  /* ── i18n ── */
+  let lang = 'en';
+  function T(k) { const e = T._[k]; if (!e) return k; return e[lang] || e.en; }
+  function TF(k, ...a) { const e = T._[k]; if (!e) return k; const f = e[lang] || e.en; return typeof f === 'function' ? f(...a) : f; }
+  T._ = {
+    title:       { en: 'Sampling & Aliasing Disco',          ru: 'Дискретизация и алиасинг',              tt: 'Сайланма һәм алиасинг' },
+    tagLine:     { en: 'Signals & Systems',                   ru: 'Сигналы и системы',                     tt: 'Сигналлар һәм системалар' },
+    labelFreq:   { en: 'Signal freq',                         ru: 'Частота сигнала',                       tt: 'Сигнал ешлыгы' },
+    labelRate:   { en: 'Sample rate',                         ru: 'Частота дискретизации',                 tt: 'Дискретлаштыру ешлыгы' },
+    hzVal:       { en: v => v + ' Hz',                        ru: v => v + ' Гц',                          tt: v => v + ' Гц' },
+    nyquistOk:   { en: 'Nyquist OK',                         ru: 'Найквист ОК',                           tt: 'Найквист ОК' },
+    aliasing:    { en: 'ALIASING',                            ru: 'АЛИАСИНГ',                              tt: 'АЛИАСИНГ' },
+    timeDomain:  { en: 'TIME DOMAIN',                         ru: 'ВРЕМЕННАЯ ОБЛАСТЬ',                     tt: 'ВАКЫТ ӨЛКӘСЕ' },
+    strobeWheel: { en: 'STROBOSCOPIC WHEEL',                  ru: 'СТРОБОСКОПИЧЕСКОЕ КОЛЕСО',              tt: 'СТРОБОСКОПИК ТӘГӘРМӘЧ' },
+    freqDomain:  { en: 'FREQ DOMAIN',                         ru: 'ЧАСТОТНАЯ ОБЛАСТЬ',                     tt: 'ЕШЛЫК ӨЛКӘСЕ' },
+  };
+
+  /* ── KaTeX rendering ── */
   document.querySelectorAll('.k').forEach(el => katex.render(el.textContent, el, { throwOnError: false }));
   document.querySelectorAll('.k-block').forEach(el => katex.render(el.textContent, el, { throwOnError: false, displayMode: true }));
 
+  /* ── Language switcher ── */
+  function updateLang(newLang) {
+    lang = newLang;
+    document.documentElement.lang = lang;
+    clearActive('.lang-btn');
+    document.querySelector(`.lang-btn[data-lang="${lang}"]`).classList.add('active');
+    clearActive('.tc');
+    $('theory-' + lang).classList.add('active');
+
+    $('title').innerHTML = T('title').replace('&', '&amp;');
+    $('tagLine').innerHTML = T('tagLine').replace('&', '&amp;');
+    $('labelFreq').textContent = T('labelFreq');
+    $('labelRate').textContent = T('labelRate');
+    $('freqVal').textContent = TF('hzVal', targetFreq.toFixed(1));
+    $('sampleVal').textContent = TF('hzVal', targetRate.toFixed(1));
+    updateStatus();
+  }
+
   document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tc').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('theory-' + btn.dataset.lang).classList.add('active');
-    });
+    btn.addEventListener('click', () => updateLang(btn.dataset.lang));
   });
 
-  const waveCanvas = document.getElementById('waveCanvas');
-  const wheelCanvas = document.getElementById('wheelCanvas');
-  const specCanvas = document.getElementById('specCanvas');
+  /* ── Canvas & DOM refs ── */
+  const waveCanvas = $('waveCanvas');
+  const wheelCanvas = $('wheelCanvas');
+  const specCanvas = $('specCanvas');
   const wCtx = waveCanvas.getContext('2d');
   const whCtx = wheelCanvas.getContext('2d');
   const sCtx = specCanvas.getContext('2d');
-  const freqSlider = document.getElementById('freqSlider');
-  const sampleSlider = document.getElementById('sampleSlider');
-  const freqVal = document.getElementById('freqVal');
-  const sampleVal = document.getElementById('sampleVal');
-  const statusDot = document.getElementById('statusDot');
-  const statusText = document.getElementById('statusText');
-  const statusBar = document.getElementById('statusBar');
+  const freqSlider = $('freqSlider');
+  const sampleSlider = $('sampleSlider');
 
   let targetFreq = 3, targetRate = 8;
   let signalFreq = 3, sampleRate = 8;
   let t = 0;
   function lerp(a, b, k) { return a + (b - a) * k; }
 
-  // Electric Blue & Amber
   const BLUE  = [59,164,255];
   const AMBER = [255,159,28];
   const STEEL = [136,153,170];
@@ -319,12 +348,33 @@
   window.addEventListener('resize', resize);
   resize();
 
-  freqSlider.addEventListener('input', e => { targetFreq = parseFloat(e.target.value); freqVal.textContent = targetFreq.toFixed(1)+' Hz'; });
-  sampleSlider.addEventListener('input', e => { targetRate = parseFloat(e.target.value); sampleVal.textContent = targetRate.toFixed(1)+' Hz'; });
+  /* ── Controls ── */
+  freqSlider.addEventListener('input', e => { targetFreq = parseFloat(e.target.value); $('freqVal').textContent = TF('hzVal', targetFreq.toFixed(1)); });
+  sampleSlider.addEventListener('input', e => { targetRate = parseFloat(e.target.value); $('sampleVal').textContent = TF('hzVal', targetRate.toFixed(1)); });
 
+  function updateStatus() {
+    const isA = signalFreq > sampleRate / 2;
+    const dot = $('statusDot');
+    const bar = $('statusBar');
+    const txt = $('statusText');
+    if (isA) {
+      dot.style.background = rgb(AMBER);
+      dot.style.boxShadow = `0 0 10px ${rgb(AMBER,0.6)}`;
+      txt.textContent = T('aliasing');
+      bar.style.color = rgb(AMBER);
+    } else {
+      dot.style.background = rgb(TEAL);
+      dot.style.boxShadow = `0 0 10px ${rgb(TEAL,0.5)}`;
+      txt.textContent = T('nyquistOk');
+      bar.style.color = rgb(TEAL);
+    }
+  }
+
+  /* ── Ghost trail state ── */
   const GHOST_COUNT = 6;
   let ghostAngles = new Array(GHOST_COUNT).fill(0), ghostTimer = 0;
 
+  /* ── Drawing ── */
   function drawWave(dt) {
     const W=wDim.w, H=wDim.h, ctx=wCtx;
     ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
@@ -351,7 +401,7 @@
       ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=rgb(col,1);ctx.fill();
       ctx.beginPath();ctx.arc(x,y,1.2,0,Math.PI*2);ctx.fillStyle='#e8ecf0';ctx.fill();
     }
-    ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('TIME DOMAIN',W-p,12);
+    ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText(T('timeDomain'),W-p,12);
   }
 
   function drawWheel(dt) {
@@ -375,7 +425,7 @@
       drawGlow(ctx,tx,ty,6,col,0.5);ctx.beginPath();ctx.arc(tx,ty,2.5,0,Math.PI*2);ctx.fillStyle=rgb(col,1);ctx.fill();
     }
     drawGlow(ctx,cx,cy,8,col,0.4);ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle='#e8ecf0';ctx.fill();
-    ctx.font='600 8px Inter';ctx.textAlign='center';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('STROBOSCOPIC WHEEL',cx,H-8);
+    ctx.font='600 8px Inter';ctx.textAlign='center';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText(T('strobeWheel'),cx,H-8);
   }
 
   function drawSpectrum() {
@@ -387,7 +437,7 @@
 
     ctx.strokeStyle='rgba(136,153,170,0.12)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,bot);ctx.lineTo(W-p.r,bot);ctx.stroke();
 
-    ctx.font='500 7px JetBrains Mono';ctx.textAlign='center';ctx.fillStyle='rgba(136,153,170,0.45)';
+    ctx.font="500 7px 'JetBrains Mono', monospace";ctx.textAlign='center';ctx.fillStyle='rgba(136,153,170,0.45)';
     for(let f=0;f<=maxF;f+=5){const x=fX(f);ctx.fillText(f+'',x,bot+11);ctx.strokeStyle='rgba(136,153,170,0.06)';ctx.beginPath();ctx.moveTo(x,p.t);ctx.lineTo(x,bot);ctx.stroke();}
 
     const nX=fX(nyq);
@@ -404,19 +454,41 @@
     for(let k=1;k<=3;k++){for(const cf of[k*sampleRate-signalFreq,k*sampleRate+signalFreq]){if(cf>0&&cf<=maxF){const cx2=fX(cf);ctx.strokeStyle=rgb(copyCol,1);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx2,bot);ctx.lineTo(cx2,bot-dH*0.4);ctx.stroke();}}}
     ctx.globalAlpha=1;
 
-    ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText('FREQ DOMAIN',W-p.r,12);
+    ctx.font='600 8px Inter';ctx.textAlign='right';ctx.fillStyle='rgba(136,153,170,0.5)';ctx.fillText(T('freqDomain'),W-p.r,12);
   }
 
+  /* ── Main loop ── */
   function draw(dt) {
     t+=dt;
     signalFreq=lerp(signalFreq,targetFreq,1-Math.exp(-8*dt));
     sampleRate=lerp(sampleRate,targetRate,1-Math.exp(-8*dt));
     drawWave(dt); drawWheel(dt); drawSpectrum();
-
-    const isA=signalFreq>sampleRate/2;
-    if(isA){statusDot.style.background=rgb(AMBER);statusDot.style.boxShadow=`0 0 10px ${rgb(AMBER,0.6)}`;statusText.textContent='ALIASING';statusBar.style.color=rgb(AMBER);}
-    else{statusDot.style.background=rgb(TEAL);statusDot.style.boxShadow=`0 0 10px ${rgb(TEAL,0.5)}`;statusText.textContent='Nyquist OK';statusBar.style.color=rgb(TEAL);}
+    updateStatus();
   }
+
+  /* ── Theory height lock ── */
+  function lockTheoryHeight() {
+    const theoryBox = document.querySelector('.theory');
+    const tcs = document.querySelectorAll('.tc');
+    let maxH = 0;
+    tcs.forEach(tc => {
+      tc.classList.add('active');
+      maxH = Math.max(maxH, tc.scrollHeight);
+      tc.classList.remove('active');
+    });
+    $('theory-' + lang).classList.add('active');
+    if (maxH > 0) {
+      const sw = theoryBox.querySelector('.lang-sw');
+      const pad = 20; /* top + bottom padding */
+      const total = maxH + sw.offsetHeight + 6 + pad;
+      theoryBox.style.height = total + 'px';
+      theoryBox.style.overflow = 'hidden';
+    }
+  }
+
+  /* ── Init ── */
+  updateLang('en');
+  lockTheoryHeight();
 
   let lastTime=0;
   function loop(time){const dt=Math.min((time-lastTime)/1000,0.05);lastTime=time;draw(dt);requestAnimationFrame(loop);}
