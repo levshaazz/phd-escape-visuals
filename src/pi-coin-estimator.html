@@ -1,0 +1,789 @@
+<!-- OUT: Probability & Statistics/pi-coin-estimator.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π Coin Estimator</title>
+<style>
+/*KIT-CSS*/
+  .top-row { display: grid; grid-template-columns: 1fr 180px; gap: 6px; flex-shrink: 0; }
+  .top-row canvas { height: 220px; }
+
+  .right-panel { display: flex; flex-direction: column; }
+  .right-top { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .coin-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 16px; font-weight: 700; border: 2px solid rgba(136,153,170,0.3); color: #8899aa; background: rgba(136,153,170,0.05); transition: border-color 0.2s, color 0.2s, background 0.2s; }
+  .coin-circle.heads { border-color: rgba(46,232,168,0.5); color: #2ee8a8; background: rgba(46,232,168,0.08); }
+  .coin-circle.tails { border-color: rgba(255,159,28,0.5); color: #ff9f1c; background: rgba(255,159,28,0.08); }
+  .trial-info { font-family: var(--mono); font-size: 10px; color: #b8c8d8; text-align: center; line-height: 1.6; }
+  .trial-info .lbl { color: #8899aa; }
+  .right-sep { border: none; border-top: 1px solid rgba(60,130,200,0.1); margin: 0; }
+  .right-bottom { padding: 8px 12px; display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+  .cum-row { display: flex; justify-content: space-between; align-items: center; height: 16px; overflow: hidden; }
+  /* No uppercasing: it turns the label "π" into "Π", a different constant. */
+  .cum-lbl { font-size: 9px; font-weight: 600; color: #7088a0; letter-spacing: 0.5px; min-width: 55px; }
+  .cum-lbl-caps { text-transform: uppercase; }
+  .cum-val { font-family: var(--mono); font-size: 11px; font-weight: 500; text-align: right; min-width: 88px; white-space: nowrap; }
+  .cum-val-blue { color: #3ba4ff; }
+  .cum-val-teal { color: #2ee8a8; }
+  .cum-val-steel { color: #8899aa; }
+  .cum-count { font-family: var(--mono); font-size: 8.5px; color: #8ba3bb; text-align: right; line-height: 1.4; }
+
+  .hist-wrap { flex: 1; min-height: 100px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .hist-wrap .cbox { min-width: 0; }
+  .hist-wrap canvas { height: 100%; }
+  .controls-bar { display: flex; align-items: center; padding: 0 10px; height: 28px; flex-shrink: 0; gap: 6px; }
+  .ctrl-btn { background: rgba(59,164,255,0.1); border: 1px solid rgba(59,164,255,0.25); color: #3ba4ff; font-family: inherit; font-size: 10px; font-weight: 600; padding: 3px 12px; border-radius: 4px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+  .ctrl-btn:hover { background: rgba(59,164,255,0.2); }
+  .ctrl-btn.active { background: rgba(59,164,255,0.3); border-color: rgba(59,164,255,0.5); }
+  .ctrl-btn-auto { min-width: 62px; }
+  .ctrl-btn-toss { min-width: 58px; }
+  .ctrl-btn-toss.hint { animation: hintPulse 1.5s ease-in-out infinite; }
+  @keyframes hintPulse { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 10px rgba(59,164,255,0.4); } }
+  .ctrl-btn-run { min-width: 62px; }
+  .ctrl-btn-reset { background: rgba(255,159,28,0.08); border-color: rgba(255,159,28,0.2); color: #ff9f1c; margin-left: auto; }
+  .ctrl-btn-reset:hover { background: rgba(255,159,28,0.18); }
+  .speed-group { display: flex; gap: 2px; background: rgba(60,130,200,0.06); border-radius: 4px; padding: 1px; }
+  .speed-btn { background: none; border: none; color: #7088a0; font-family: var(--mono); font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+  .speed-btn:hover { color: #b0c8e0; }
+  .speed-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; }
+
+  .theory { padding: 10px 14px; flex-shrink: 0; display: flex; flex-direction: column; }
+  
+  
+  
+  
+
+  
+  
+  
+  .tc p { font-size: 10px; line-height: 1.5; color: #b8c8d8; margin-bottom: 3px; }
+  
+  
+  
+  
+
+  /* ── Responsive: below 700px the square layout stops working ──
+     The desktop layout is a fixed-aspect "slide"; on a phone that produces
+     unusably small canvases and clips the theory panel. Here the app becomes a
+     normal scrolling column instead. */
+  
+
+  @media (max-width: 700px) {
+    .top-row { grid-template-columns: 1fr; }
+    .top-row canvas { height: 170px; }
+    .right-panel { flex-direction: row; align-items: stretch; }
+    .right-top { flex-direction: row; gap: 12px; }
+    .right-sep { display: none; }
+    .right-bottom { border-left: 1px solid rgba(60,130,200,0.1); justify-content: center; }
+    .hist-wrap { grid-template-columns: 1fr; min-height: 300px; }
+    .hist-wrap canvas { height: 150px; }
+    .controls-bar { height: auto; flex-wrap: wrap; padding: 6px 10px; }
+    .ctrl-btn-reset { margin-left: 0; }
+    .header { height: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 id="title">π Coin Estimator</h1>
+    <span class="tag" id="tagLine">Probability &amp; Statistics</span>
+  </div>
+
+  <div class="top-row">
+    <div class="cbox"><canvas id="walkCanvas"></canvas></div>
+    <div class="cbox right-panel">
+      <div class="right-top">
+        <div class="coin-circle" id="coinDisp">?</div>
+        <div class="trial-info">
+          <span id="infoHTS">О:0  Р:0  S:0</span><br>
+          <span id="infoTau">τ = —</span><br>
+          <span id="infoFrac">Fraction = —</span>
+        </div>
+      </div>
+      <hr class="right-sep">
+      <div class="right-bottom">
+        <div class="cum-row"><span class="cum-lbl cum-lbl-caps" id="lAvg">avg</span><span class="cum-val cum-val-blue" id="vAvg">—</span></div>
+        <div class="cum-row"><span class="cum-lbl" id="lPi">π ≈</span><span class="cum-val cum-val-teal" id="vPi">—</span></div>
+        <div class="cum-row"><span class="cum-lbl">π</span><span class="cum-val cum-val-steel">3.14159265…</span></div>
+        <div class="cum-count" id="vCount"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hist-wrap">
+    <div class="cbox"><canvas id="histCanvas"></canvas></div>
+    <div class="cbox"><canvas id="traceCanvas"></canvas></div>
+  </div>
+
+  <div class="controls-bar cbox">
+    <button class="ctrl-btn ctrl-btn-toss hint" id="btnToss">Toss</button>
+    <button class="ctrl-btn ctrl-btn-run" id="btnRun">Run</button>
+    <button class="ctrl-btn ctrl-btn-auto" id="btnAuto">Auto ▶</button>
+    <div class="speed-group">
+      <button class="speed-btn" data-speed="0.5">.5x</button>
+      <button class="speed-btn active" data-speed="1">1x</button>
+      <button class="speed-btn" data-speed="2">2x</button>
+      <button class="speed-btn" data-speed="5">5x</button>
+    </div>
+    <button class="ctrl-btn ctrl-btn-reset" id="btnReset">Reset</button>
+  </div>
+
+  <div class="theory cbox">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc" data-lang="en">
+      <h3>Estimating π with a Coin (Propp, 2026)</h3>
+      <p>Toss a fair coin, track <span class="k">S_n = H_n - T_n</span>. Stop at <span class="k">\tau</span> when <span class="k">S_n = +1</span>. Record <span class="k">H_\tau/\tau</span>. Half the time <span class="k">\tau=1</span> (first toss is heads, fraction = 1). Longer walks are rarer, but only <strong>polynomially</strong> so: <span class="k">\mathbb{P}(\tau\!=\!2k\!+\!1) = \tfrac{1}{2 \cdot 4^k}\tfrac{1}{k+1}\tbinom{2k}{k}</span> (Catalan numbers) decays like <span class="k">k^{-3/2}</span>. The expected fraction connects to <span class="k">\pi</span> via the arcsin series:</p>
+      <div class="fb"><span class="k-block">\mathbb{E}\!\left[\frac{H_\tau}{\tau}\right] = \tfrac{1}{2}\sum_{k \ge 0}\tfrac{1}{4^k}\tfrac{1}{2k+1}\tbinom{2k}{k} = \tfrac{1}{2}\arcsin(1) = \frac{\pi}{4}</span></div>
+      <p class="note"><strong>Why the histogram peaks at 1:</strong> 50% of trials end on the first toss; the average is dragged up to <span class="k">\pi/4 \approx 0.785</span> by that heavy tail. The tail is heavy enough that <span class="k">\mathbb{E}[\tau] = \infty</span> — 1000 trials cost ~700 000 tosses. Error <span class="k">\approx 0.88/\sqrt{N_{\text{trials}}}</span>, which is only <span class="k">\sim N_{\text{tosses}}^{-1/4}</span>: worse per toss than Buffon's needle, but it needs no geometry.</p>
+    </div>
+
+    <div class="tc" data-lang="ru">
+      <h3>Оценка π монетой (Propp, 2026)</h3>
+      <p>Бросайте монету и следите за <span class="k">S_n = H_n - T_n</span>. Остановитесь в первый момент <span class="k">\tau</span>, когда <span class="k">S_n = +1</span> (это <em>момент остановки</em>). Запишите <span class="k">H_\tau/\tau</span>. В 50% случаев <span class="k">\tau=1</span> (первый бросок — орёл, дробь = 1). Длинные блуждания реже, но их вероятность убывает лишь <strong>степенно</strong>: <span class="k">\mathbb{P}(\tau\!=\!2k\!+\!1) = \tfrac{1}{2 \cdot 4^k}\tfrac{1}{k+1}\tbinom{2k}{k}</span> (числа Каталана) и убывает как <span class="k">k^{-3/2}</span>. Математическое ожидание выражается через <span class="k">\pi</span> разложением арксинуса в ряд:</p>
+      <div class="fb"><span class="k-block">\mathbb{E}\!\left[\frac{H_\tau}{\tau}\right] = \tfrac{1}{2}\sum_{k \ge 0}\tfrac{1}{4^k}\tfrac{1}{2k+1}\tbinom{2k}{k} = \tfrac{1}{2}\arcsin(1) = \frac{\pi}{4}</span></div>
+      <p class="note"><strong>Почему пик на 1:</strong> 50% испытаний заканчиваются первым броском; среднее подтягивается к <span class="k">\pi/4 \approx 0.785</span> тяжёлым хвостом. Хвост настолько тяжёлый, что <span class="k">\mathbb{E}[\tau] = \infty</span> — 1000 испытаний обходятся в ~700 000 бросков. Ошибка <span class="k">\approx 0.88/\sqrt{N}</span> (где <span class="k">N</span> — число испытаний), то есть всего <span class="k">\sim N_{\text{бросков}}^{-1/4}</span>: на один бросок хуже, чем в задаче Бюффона об игле, зато не нужна геометрия.</p>
+    </div>
+
+    <div class="tc" data-lang="tt">
+      <h3>Тәңкә белән π бәяләү (Propp, 2026)</h3>
+      <p>Тәңкә ыргытып <span class="k">S_n = H_n - T_n</span> күзәтегез. <span class="k">S_n = +1</span> булган мизгелдә (<span class="k">\tau</span>) туктагыз. <span class="k">H_\tau/\tau</span> язып алыгыз. 50% очракта <span class="k">\tau=1</span> (беренче ыргыту — аверс, вакланма = 1). Озын йөрешләр сирәгрәк, ләкин кимү экспоненциаль түгел, ә <strong>дәрәҗәле</strong>: <span class="k">\mathbb{P}(\tau\!=\!2k\!+\!1) = \tfrac{1}{2 \cdot 4^k}\tfrac{1}{k+1}\tbinom{2k}{k}</span> (Каталан саннары) <span class="k">k^{-3/2}</span> кебек кими. Көтелмә арксинус рәте аша <span class="k">\pi</span> белән бәйле:</p>
+      <div class="fb"><span class="k-block">\mathbb{E}\!\left[\frac{H_\tau}{\tau}\right] = \tfrac{1}{2}\sum_{k \ge 0}\tfrac{1}{4^k}\tfrac{1}{2k+1}\tbinom{2k}{k} = \tfrac{1}{2}\arcsin(1) = \frac{\pi}{4}</span></div>
+      <p class="note"><strong>Нигә пик 1-дә:</strong> сынауларның 50% ы беренче ыргытуда бетә; уртача кыйммәт авыр койрык аркасында <span class="k">\pi/4 \approx 0.785</span> кә тартыла. Койрык шулкадәр авыр ки, <span class="k">\mathbb{E}[\tau] = \infty</span> — 1000 сынау ~700 000 ыргыту таләп итә. Хата <span class="k">\approx 0.88/\sqrt{N_{\text{сынау}}}</span>, ягъни <span class="k">\sim N_{\text{ыргыту}}^{-1/4}</span> гына: бер ыргытуга Бюффон энәсеннән начаррак, ләкин геометрия кирәкми.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/*KIT-JS*/
+</script>
+<script>
+(() => {
+  'use strict';
+  /* ── Helpers ── */
+  const { $, clearActive, rgb, drawGlow, BLUE, AMBER, TEAL, STEEL, BG, T } = Kit;
+  const MONO = 'ui-monospace, Consolas, monospace';
+
+  /* ── i18n ── */
+  const I18N = {
+    title:    { en: 'π Coin Estimator',        ru: 'Оценка π монетой',           tt: 'Тәңкә белән π бәяләү' },
+    tagLine:  { en: 'Probability & Statistics', ru: 'Теория вероятностей',        tt: 'Ихтималлык теориясе' },
+    walk:     { en: 'RANDOM WALK',              ru: 'СЛУЧАЙНОЕ БЛУЖДАНИЕ',        tt: 'ОЧРАКЛЫ ЙӨРЕШ' },
+    dist:     { en: 'DISTRIBUTION',             ru: 'РАСПРЕДЕЛЕНИЕ',              tt: 'БҮЛЕНЕШ' },
+    hd:       { en: 'H',                        ru: 'О',                        tt: 'Б' },
+    tl:       { en: 'T',                        ru: 'Р',                        tt: 'Я' },
+    frac:     { en: 'Fraction',                 ru: 'Дробь',                      tt: 'Вакланма' },
+    avg:      { en: 'avg',                      ru: 'средн.',                     tt: 'уртача' },
+    piApprox: { en: 'π ≈',                     ru: 'π ≈',                        tt: 'π ≈' },
+    toss:     { en: 'Toss',                     ru: 'Бросить',                    tt: 'Ыргыту' },
+    runTrial: { en: 'Run',                      ru: 'Запуск',                     tt: 'Йөгертү' },
+    autoOn:   { en: 'Auto ■',                   ru: 'Авто ■',                     tt: 'Авто ■' },
+    autoOff:  { en: 'Auto ▶',                   ru: 'Авто ▶',                     tt: 'Авто ▶' },
+    reset:    { en: 'Reset',                    ru: 'Сброс',                      tt: 'Ташлау' },
+    tosses:   { en: 'tosses',                   ru: 'бросков',                    tt: 'ыргыту' },
+    capped:   { en: 'capped',                   ru: 'усечено',                   tt: 'киселгән' },
+    trace:    { en: 'ESTIMATE vs TRIALS',       ru: 'ОЦЕНКА ОТ ЧИСЛА ИСПЫТАНИЙ',       tt: 'СЫНАУ САНЫННАН БӘЯ' },
+  };
+
+  /* ── KaTeX ── */
+
+  /* ── State ──
+     tau (the first time the walk hits +1) has INFINITE expectation:
+     P(tau > n) ~ sqrt(2/(pi*n)). A `while (!done) toss()` in the UI thread is
+     therefore a guaranteed freeze — 1000 trials cost ~666k tosses and single
+     trials of 400k+ are routine. Everything below is driven incrementally from
+     the animation loop with a per-frame budget, and nothing unbounded is stored. */
+  const TAU_CAP = 1000000;   // safety stop; P(tau > cap) ~ 8e-4, reported in the UI
+  const SKETCH_CAP = 1200;   // max points kept for drawing the path
+  const COIN_KEEP = 160;     // H/T labels are only ever drawn for short walks
+  const TOSS_BUDGET = 20000; // tosses per frame at 1x — keeps the worst frame well under 16ms
+
+  let sketch = [{ i: 0, s: 0 }]; // decimated walk path
+  let sketchStride = 1;
+  let coins = [];
+  let lastCoin = null;
+  let curHeads = 0, curTosses = 0, curS = 0, minS = 0, maxS = 0;
+  let trialDone = false;
+  let pendingRun = false;        // "Run" pressed — finish this trial across frames
+  let nTrials = 0, runningSum = 0, runningSumSq = 0;
+  let cappedTrials = 0, totalTosses = 0;
+  let lastTrial = null;
+  let autoMode = false;
+  let speed = 1;
+  let autoTimer = 0;
+  let glowAlpha = 0;
+  let histBins = {};
+  let sortedBinsCache = null;    // invalidated whenever a new bin appears
+  let trace = [];              // downsampled history of pi-hat for the convergence plot
+  let traceStride = 1;
+
+  /* ── Canvas refs ── */
+  const walkCanvas = $('walkCanvas');
+  const histCanvas = $('histCanvas');
+  const traceCanvas = $('traceCanvas');
+  let wCtx, hCtx, tCtx, wW, wH, hW, hH, tW, tH;
+
+  function resize() {
+    wCtx = Kit.sizeCanvas(walkCanvas).ctx;
+    hCtx = Kit.sizeCanvas(histCanvas).ctx;
+    tCtx = Kit.sizeCanvas(traceCanvas).ctx;
+    const wr = walkCanvas.getBoundingClientRect();
+    const hr = histCanvas.getBoundingClientRect();
+    const tr = traceCanvas.getBoundingClientRect();
+    wW = wr.width; wH = wr.height; hW = hr.width; hH = hr.height;
+    tW = tr.width; tH = tr.height;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ── Algorithm ── */
+  /* Keep at most SKETCH_CAP points of the path: once full, drop every other
+     point and double the stride. Amortised O(1), and the drawn shape stays
+     faithful for walks of any length. */
+  function sketchPush(i, s) {
+    if (i % sketchStride) return;
+    sketch.push({ i, s });
+    if (sketch.length > SKETCH_CAP) {
+      const out = [];
+      for (let k = 0; k < sketch.length; k += 2) out.push(sketch[k]);
+      sketch = out; sketchStride *= 2;
+    }
+  }
+
+  function tracePush() {
+    if (nTrials % traceStride) return;
+    trace.push({ n: nTrials, pi: 4 * runningSum / nTrials });
+    if (trace.length > 600) {
+      const out = [];
+      for (let k = 0; k < trace.length; k += 2) out.push(trace[k]);
+      trace = out; traceStride *= 2;
+    }
+  }
+
+  function toss() {
+    const isH = Math.random() < 0.5;
+    lastCoin = isH ? 'H' : 'T';
+    if (coins.length < COIN_KEEP) coins.push(lastCoin);
+    if (isH) curHeads++;
+    curTosses++; totalTosses++;
+    curS += isH ? 1 : -1;
+    if (curS < minS) minS = curS;
+    if (curS > maxS) maxS = curS;
+    sketchPush(curTosses, curS);
+    if (curS >= 1) completeTrial(false);
+    else if (curTosses >= TAU_CAP) completeTrial(true);
+  }
+
+  function doToss() {
+    if (trialDone) startNewWalk();
+    toss();
+    updateUI();
+  }
+
+  /* "Run" no longer blocks: it asks the frame loop to finish this trial. */
+  function requestRun() {
+    if (trialDone) startNewWalk();
+    pendingRun = true;
+  }
+
+  function completeTrial(capped) {
+    trialDone = true; pendingRun = false; glowAlpha = 1;
+    const last = sketch[sketch.length - 1];
+    if (!last || last.i !== curTosses) sketch.push({ i: curTosses, s: curS });
+    if (capped) { cappedTrials++; return; }  // excluded from the estimate, shown in the UI
+    const tau = curTosses;
+    const frac = curHeads / tau;
+    nTrials++;
+    runningSum += frac; runningSumSq += frac * frac;
+    lastTrial = { tau, heads: curHeads, frac };
+    tracePush();
+    const key = curHeads + '/' + tau;
+    if (!histBins[key]) { histBins[key] = { frac, count: 0 }; sortedBinsCache = null; }
+    histBins[key].count++;
+  }
+
+  function startNewWalk() {
+    sketch = [{ i: 0, s: 0 }]; sketchStride = 1;
+    coins = []; lastCoin = null;
+    curHeads = 0; curTosses = 0; curS = 0; minS = 0; maxS = 0;
+    trialDone = false;
+  }
+
+  /* Drives trials from the animation loop under a fixed per-frame toss budget,
+     so no single trial — however long — can block a frame. */
+  function advance(dt) {
+    let budget = Math.round(TOSS_BUDGET * speed);
+
+    if (pendingRun) {
+      while (!trialDone && budget-- > 0) toss();
+      return;
+    }
+    if (!autoMode) return;
+
+    autoTimer += dt * speed;
+    const interval = 0.12;
+    let starts = Math.floor(autoTimer / interval);
+    if (starts > 0) autoTimer -= starts * interval;
+    starts = Math.min(starts, 40);
+
+    while (budget > 0) {
+      if (trialDone) {
+        if (starts <= 0) break;
+        startNewWalk(); starts--;
+      }
+      toss(); budget--;
+    }
+  }
+
+  function resetAll() {
+    startNewWalk();
+    nTrials = 0; runningSum = 0; runningSumSq = 0;
+    cappedTrials = 0; totalTosses = 0; lastTrial = null;
+    trace = []; traceStride = 1;
+    histBins = {}; sortedBinsCache = null;
+    autoMode = false; pendingRun = false; glowAlpha = 0; autoTimer = 0;
+    $('btnAuto').textContent = T('autoOff');
+    $('btnAuto').classList.remove('active');
+    updateUI();
+  }
+
+  /* ── UI update ── */
+  /* Digits come from the standard error, never from a fixed table: printing
+     "3.140586" when the s.e. is 0.03 invents four digits that do not exist. */
+  function decFor(err) {
+    if (!(err > 0) || !isFinite(err)) return 2;
+    return Math.min(6, Math.max(1, Math.ceil(-Math.log10(err))));
+  }
+  function fmtCount(v) {
+    if (v < 1000) return String(v);
+    if (v < 1e6) return (v / 1e3).toFixed(v < 1e4 ? 1 : 0) + 'k';
+    return (v / 1e6).toFixed(v < 1e7 ? 2 : 1) + 'M';
+  }
+  /* X = H_tau/tau is bounded in (1/2, 1], so Var[X] is finite and the CLT applies:
+     sd(4*Xbar) = 4*sd(X)/sqrt(n) — the error decays like n^(-1/2) in TRIALS
+     (which is n^(-1/4) in coin tosses, because E[tau] is infinite). */
+  /* sd(X) is known analytically for this stopping rule. Floor the sample
+     estimate with it: for the first handful of trials every draw is often
+     tau = 1, the sample variance is exactly 0, and the panel would otherwise
+     announce "4.00 +- 0.00" — the very fake precision this display exists to
+     avoid. (Measured in ~28% of two-trial sessions.) */
+  const SD_X = 0.219196; // sqrt(Var[H_tau/tau]); Var = 0.0480471, computed exactly
+                         // from the first-passage distribution, not estimated
+  function piStdErr() {
+    if (nTrials < 1) return Infinity;
+    const avg = runningSum / nTrials;
+    const varX = Math.max(0, runningSumSq / nTrials - avg * avg);
+    return 4 * Math.max(Math.sqrt(varX), SD_X * 0.5) / Math.sqrt(nTrials);
+  }
+
+  function updateUI() {
+    const n = nTrials;
+    const curT = curTosses - curHeads;
+    const s = curS;
+
+    // Coin display
+    const coinEl = $('coinDisp');
+    if (lastCoin) {
+      coinEl.textContent = lastCoin;
+      coinEl.className = 'coin-circle ' + (lastCoin === 'H' ? 'heads' : 'tails');
+    } else {
+      coinEl.textContent = '?';
+      coinEl.className = 'coin-circle';
+    }
+
+    // Trial info — direct textContent updates
+    $('infoHTS').textContent = `${T('hd')}:${fmtCount(curHeads)}  ${T('tl')}:${fmtCount(curT)}  S:${s > 0 ? '+' : ''}${s}`;
+    if (!trialDone && curTosses > 0) {
+      $('infoTau').textContent = `τ = ${fmtCount(curTosses)}\u2026`;
+      $('infoFrac').textContent = `${T('frac')} = \u2014`;
+    } else if (lastTrial) {
+      $('infoTau').textContent = `τ = ${fmtCount(lastTrial.tau)}`;
+      $('infoFrac').textContent = `${T('frac')} = ${lastTrial.heads}/${lastTrial.tau}`;
+    } else {
+      $('infoTau').textContent = 'τ = \u2014';
+      $('infoFrac').textContent = `${T('frac')} = \u2014`;
+    }
+
+    // Cumulative
+    if (n > 0) {
+      const avg = runningSum / n;
+      const ci = 1.96 * piStdErr();
+      const dec = decFor(ci);
+      $('vAvg').textContent = avg.toFixed(Math.min(6, dec + 1));
+      $('vPi').textContent = isFinite(ci)
+        ? `${(4 * avg).toFixed(dec)} ± ${ci.toFixed(dec)}`
+        : (4 * avg).toFixed(2);
+      let line = '#' + fmtCount(n) + ' · ' + fmtCount(totalTosses) + ' ' + T('tosses');
+      if (cappedTrials > 0) line += ' · ' + cappedTrials + ' ' + T('capped');
+      $('vCount').textContent = line;
+    } else {
+      $('vAvg').textContent = '\u2014';
+      $('vPi').textContent = '\u2014';
+      $('vCount').textContent = '';
+    }
+  }
+
+  /* ── Draw: random walk ── */
+  function drawWalk() {
+    const W = wW, H = wH;
+    const ctx = wCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l: 36, r: 14, t: 20, b: 14 };
+    const dW = W - pad.l - pad.r, dH = H - pad.t - pad.b;
+    const steps = curTosses;
+
+    // minS / maxS are tracked incrementally in toss() — the path itself is only
+    // ever a decimated sketch, so it must not be scanned for extremes here.
+    const lo = Math.min(minS, -2), hi = Math.max(maxS, 2);
+    const rangeS = hi - lo || 1;
+
+    const yOf = v => pad.t + dH * (1 - (v - lo) / rangeS);
+    const xSteps = Math.max(steps, 5); // min 5 steps on X-axis so short walks don't stretch
+    const xOf = i => pad.l + (i / xSteps) * dW;
+
+    // Label
+    ctx.font = '600 8px system-ui, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(STEEL, 0.92); ctx.fillText(T('walk'), pad.l, 13);
+
+    // Zero line
+    const y0 = yOf(0);
+    ctx.strokeStyle = rgb(STEEL, 0.25); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(W - pad.r, y0); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `500 8px ${MONO}`; ctx.textAlign = 'right'; ctx.fillStyle = rgb(STEEL, 0.9);
+    ctx.fillText('0', pad.l - 5, y0 + 3);
+
+    // Threshold +1
+    const y1 = yOf(1);
+    ctx.strokeStyle = rgb(AMBER, 0.4); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(pad.l, y1); ctx.lineTo(W - pad.r, y1); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = rgb(AMBER, 0.95); ctx.fillText('+1', pad.l - 5, y1 + 3);
+
+    if (steps === 0) return;
+
+    // Walk path — always <= SKETCH_CAP points, whatever tau turned out to be
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.85); ctx.lineWidth = 2;
+    for (let k = 0; k < sketch.length; k++) {
+      const x = xOf(sketch[k].i), y = yOf(sketch[k].s);
+      k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    /* H/T labels only when they actually fit. A fixed "steps <= 100" guard packed
+       49 labels into a 310px phone canvas — an unreadable smear that also ran
+       into the panel title. Gate on the per-step spacing instead, and start the
+       row past the title. */
+    const spacing = dW / Math.max(1, xSteps);
+    if (steps <= 100 && sketchStride === 1) {
+      if (spacing >= 9) {
+        ctx.font = `500 7px ${MONO}`; ctx.textAlign = 'center';
+        const titleEnd = pad.l + ctx.measureText(T('walk')).width * 1.6 + 10;
+        for (let i = 0; i < coins.length && i < steps; i++) {
+          const x = xOf(i + 1);
+          if (x < titleEnd) continue;                     // don't collide with the label
+          ctx.fillStyle = coins[i] === 'H' ? rgb(TEAL, 0.75) : rgb(AMBER, 0.7);
+          ctx.fillText(coins[i], x, pad.t - 5);
+        }
+      }
+      for (let k = 0; k < sketch.length; k++) {
+        ctx.beginPath(); ctx.arc(xOf(sketch[k].i), yOf(sketch[k].s), spacing >= 5 ? 2.5 : 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = rgb(BLUE, 0.7); ctx.fill();
+      }
+    }
+
+    // Glow + fraction at endpoint
+    if (trialDone && glowAlpha > 0.01) {
+      const capped = curS < 1;
+      const col = capped ? AMBER : TEAL;
+      const ex = xOf(steps), ey = yOf(capped ? curS : 1);
+      drawGlow(ctx, ex, ey, 22, col);
+      ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+      ctx.fillStyle = rgb(col, glowAlpha); ctx.fill();
+
+      if (lastTrial && !capped) {
+        ctx.font = `600 11px ${MONO}`; ctx.textAlign = 'center';
+        ctx.fillStyle = rgb(TEAL, Math.min(1, glowAlpha));
+        ctx.fillText(lastTrial.heads + '/' + lastTrial.tau, ex, ey - 14);
+      }
+    }
+  }
+
+  /* ── Draw: histogram ── */
+  function drawHist() {
+    const W = hW, H = hH;
+    const ctx = hCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l: 36, r: 14, t: 18, b: 22 };
+    const dW = W - pad.l - pad.r, dH = H - pad.t - pad.b;
+
+    // Label
+    ctx.font = '600 8px system-ui, sans-serif'; ctx.textAlign = 'right';
+    ctx.fillStyle = rgb(STEEL, 0.92); ctx.fillText(T('dist'), W - pad.r, 13);
+
+    // X-axis range: 0.5 to 1.0
+    const xMin = 0.48, xRange = 0.56;
+    const xOf = v => pad.l + ((v - xMin) / xRange) * dW;
+
+    // X-axis line
+    ctx.strokeStyle = rgb(STEEL, 0.15); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, pad.t + dH); ctx.lineTo(W - pad.r, pad.t + dH); ctx.stroke();
+
+    // X-axis tick labels
+    ctx.font = `500 7px ${MONO}`; ctx.textAlign = 'center'; ctx.fillStyle = rgb(STEEL, 0.85);
+    for (const v of [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) {
+      const x = xOf(v);
+      ctx.fillText(v.toFixed(1), x, pad.t + dH + 12);
+    }
+
+    // π/4 reference line
+    const piOver4 = Math.PI / 4;
+    const xPi = xOf(piOver4);
+    ctx.strokeStyle = rgb(TEAL, 0.5); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(xPi, pad.t); ctx.lineTo(xPi, pad.t + dH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `500 8px ${MONO}`; ctx.textAlign = 'center';
+    ctx.fillStyle = rgb(TEAL, 0.95); ctx.fillText('π/4', xPi, pad.t - 4);
+
+    // Average line
+    if (nTrials > 0) {
+      const avg = runningSum / nTrials;
+      const xA = xOf(avg);
+      ctx.strokeStyle = rgb(BLUE, 0.5); ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(xA, pad.t); ctx.lineTo(xA, pad.t + dH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = rgb(BLUE, 0.95);
+      ctx.fillText(T('avg'), xA, pad.t + dH + 20);
+    }
+
+    // Bins. The bin set grows like sqrt(trials) (1300+ at 40k trials), so cache
+    // the sorted view and rebuild it only when a new bin appears — re-keying
+    // and re-sorting every frame was ~1 ms of pure waste at high trial counts.
+    const binKeys = Object.keys(histBins);
+    if (binKeys.length === 0) return;
+    if (sortedBinsCache === null || sortedBinsCache.length !== binKeys.length) {
+      sortedBinsCache = binKeys.map(k => ({ k, bin: histBins[k] })).sort((a, b) => a.bin.frac - b.bin.frac);
+    }
+
+    let maxCount = 0;
+    for (const k of binKeys) maxCount = Math.max(maxCount, histBins[k].count);
+
+    // Dot stacks read beautifully for a handful of trials and turn into an
+    // unreadable smear (and thousands of arc() calls per frame) beyond that,
+    // so switch to bars once one stack would no longer fit.
+    const dotR = Math.min(4, dH / (maxCount + 1) / 2.2);
+    const useDots = maxCount <= 60 && dotR >= 2;
+    let lastLabelX = -Infinity;
+
+    for (const entry of sortedBinsCache) {
+      const bin = { k: entry.k, frac: entry.bin.frac, count: entry.bin.count };
+      const x = xOf(bin.frac);
+      if (useDots) {
+        const dotSpacing = dotR * 2.2;
+        for (let i = 0; i < bin.count; i++) {
+          const y = pad.t + dH - dotSpacing * (i + 0.5);
+          if (y < pad.t) break;
+          ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
+          ctx.fillStyle = rgb(BLUE, 0.6); ctx.fill();
+        }
+      } else {
+        const h = (bin.count / maxCount) * dH;
+        const bw = Math.max(2, Math.min(9, dW / (sortedBinsCache.length + 2)));
+        ctx.fillStyle = rgb(BLUE, 0.55);
+        ctx.fillRect(x - bw / 2, pad.t + dH - h, bw, h);
+        ctx.fillStyle = rgb(BLUE, 0.9);
+        ctx.fillRect(x - bw / 2, pad.t + dH - h, bw, Math.min(2, h));
+      }
+      /* Fraction label — the gap must account for the label's own width, or a
+         long key like "2415/4829" lands on top of its neighbour once the canvas
+         narrows to phone width. */
+      if (useDots && bin.count > 0) {
+        ctx.font = `500 6px ${MONO}`; ctx.textAlign = 'center';
+        const half = bin.k.length * 1.9 + 4;
+        if (x - half - lastLabelX > 6) {
+          ctx.fillStyle = rgb(STEEL, 0.9);
+          ctx.fillText(bin.k, x, pad.t + dH + 6);
+          lastLabelX = x + half;
+        }
+      }
+    }
+    if (!useDots) {
+      ctx.font = `500 7px ${MONO}`; ctx.textAlign = 'left';
+      ctx.fillStyle = rgb(STEEL, 0.9);
+      ctx.fillText('max ' + fmtCount(maxCount), pad.l + 2, pad.t + 8);
+    }
+  }
+
+  /* ── Draw: convergence trace ──
+     The single most informative plot for any Monte Carlo method, and the one
+     the demo was missing: pi-hat against the number of trials, with the
+     theoretical +-1.96 sigma/sqrt(n) envelope drawn on top. If the estimator is
+     behaving, the blue trace stays inside the band roughly 95% of the time —
+     and the band visibly shrinks like n^(-1/2), which is what the theory panel
+     now claims. */
+  function drawTrace() {
+    const W = tW, H = tH, ctx = tCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l: 30, r: 10, t: 18, b: 20 };
+    const dW = W - pad.l - pad.r, dH = H - pad.t - pad.b;
+
+    ctx.font = '600 8px system-ui, sans-serif'; ctx.textAlign = 'right';
+    ctx.fillStyle = rgb(STEEL, 0.92); ctx.fillText(T('trace'), W - pad.r, 13);
+
+    /* Keep the x-axis stable from the start so the plot does not lurch about
+       during the first few trials. */
+    const nMax = Math.max(100, nTrials);
+    const sd = (() => {
+      if (nTrials < 2) return SD_X;                      // analytic value until we have data
+      const a = runningSum / nTrials;
+      return Math.max(Math.sqrt(Math.max(0, runningSumSq / nTrials - a * a)), SD_X * 0.5);
+    })();
+
+    // Vertical span: zoom in as the estimate tightens, but never beyond ±0.02
+    // 1.0 rather than 0.6: keeps the confidence band inside the view from about
+    // the third trial, so the trace and its envelope overlap instead of the band
+    // appearing as a detached shape further along the axis.
+    const half = Math.max(0.02, Math.min(1.0, 5 * 4 * sd / Math.sqrt(Math.max(2, nTrials))));
+    const yTop = pad.t, yBot = pad.t + dH;
+    const yOf = v => Math.max(yTop, Math.min(yBot, pad.t + dH * (1 - (v - (Math.PI - half)) / (2 * half))));
+    const xOf = n => pad.l + (Math.log(Math.max(1, n)) / Math.log(nMax)) * dW;
+
+    /* +-1.96 s.e. envelope. Only from the point where it actually fits inside
+       the view: for the first few trials the band is several units wide, and
+       drawing it clamped just floods the panel with a solid block. */
+    const nBandStart = Math.pow(1.96 * 4 * sd / half, 2);
+    if (nBandStart < nMax) {
+      ctx.fillStyle = rgb(TEAL, 0.10);
+      ctx.beginPath();
+      const lo = Math.log(Math.max(1, nBandStart)), hi = Math.log(nMax);
+      for (let i = 0; i <= 100; i++) {
+        const n = Math.exp(lo + (i / 100) * (hi - lo));
+        ctx.lineTo(xOf(n), yOf(Math.PI + 1.96 * 4 * sd / Math.sqrt(n)));
+      }
+      for (let i = 100; i >= 0; i--) {
+        const n = Math.exp(lo + (i / 100) * (hi - lo));
+        ctx.lineTo(xOf(n), yOf(Math.PI - 1.96 * 4 * sd / Math.sqrt(n)));
+      }
+      ctx.closePath(); ctx.fill();
+    }
+
+    // true pi
+    const yPi = yOf(Math.PI);
+    ctx.strokeStyle = rgb(TEAL, 0.55); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(pad.l, yPi); ctx.lineTo(W - pad.r, yPi); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `500 8px ${MONO}`; ctx.textAlign = 'right';
+    ctx.fillStyle = rgb(TEAL, 0.95); ctx.fillText('π', pad.l - 4, yPi + 3);
+
+    // y extents
+    ctx.fillStyle = rgb(STEEL, 0.85); ctx.font = `500 7px ${MONO}`;
+    ctx.fillText((Math.PI + half).toFixed(2), pad.l - 4, pad.t + 6);
+    ctx.fillText((Math.PI - half).toFixed(2), pad.l - 4, pad.t + dH);
+
+    // decade ticks on the log x-axis
+    ctx.textAlign = 'center';
+    for (let d = 1; d <= nMax; d *= 10) {
+      const x = xOf(d);
+      if (x > W - pad.r - 6) break;
+      ctx.strokeStyle = rgb(STEEL, 0.10); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + dH); ctx.stroke();
+      ctx.fillStyle = rgb(STEEL, 0.85);
+      ctx.fillText(fmtCount(d), x, pad.t + dH + 11);
+    }
+
+    if (trace.length < 2) return;
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.9); ctx.lineWidth = 1.5;
+    for (let i = 0; i < trace.length; i++) {
+      const x = xOf(trace[i].n);
+      const y = Math.max(pad.t - 4, Math.min(pad.t + dH + 4, yOf(trace[i].pi)));
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    // always finish on the live value, even if it fell outside the sketch stride
+    if (nTrials > 0) {
+      const x = xOf(nTrials), y = Math.max(pad.t - 4, Math.min(pad.t + dH + 4, yOf(4 * runningSum / nTrials)));
+      ctx.lineTo(x, y); ctx.stroke();
+      drawGlow(ctx, x, y, 10, BLUE);
+      ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fillStyle = rgb(BLUE, 1); ctx.fill();
+    } else ctx.stroke();
+  }
+
+  function drawAll() { drawWalk(); drawHist(); drawTrace(); }
+
+  /* ── Controls ── */
+  function stopHint() { $('btnToss').classList.remove('hint'); }
+  $('btnToss').addEventListener('click', () => { stopHint(); doToss(); drawAll(); });
+  $('btnRun').addEventListener('click', () => { stopHint(); requestRun(); });
+  $('btnReset').addEventListener('click', resetAll);
+
+  $('btnAuto').addEventListener('click', () => {
+    stopHint(); autoMode = !autoMode;
+    $('btnAuto').textContent = autoMode ? T('autoOn') : T('autoOff');
+    $('btnAuto').classList.toggle('active', autoMode);
+  });
+
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      clearActive('.speed-btn');
+      btn.classList.add('active');
+      speed = parseFloat(btn.dataset.speed);
+    });
+  });
+
+  Kit.onKey({
+    ' ': () => $('btnAuto').click(),
+    t: () => { stopHint(); doToss(); }, T: () => { stopHint(); doToss(); },
+    r: () => { stopHint(); requestRun(); }, R: () => { stopHint(); requestRun(); },
+  });
+
+  /* ── Language ── */
+  function updateLang() {
+    $('title').textContent = T('title');
+    $('tagLine').textContent = T('tagLine');
+    $('lAvg').textContent = T('avg');
+    $('lPi').textContent = T('piApprox');
+    $('btnToss').textContent = T('toss');
+    $('btnRun').textContent = T('runTrial');
+    $('btnAuto').textContent = autoMode ? T('autoOn') : T('autoOff');
+    $('btnReset').textContent = T('reset');
+    updateUI();
+    drawAll();
+  }
+
+  /* ── Auto-run loop ── */
+  function frame(dt) {
+    if (glowAlpha > 0) glowAlpha = Math.max(0, glowAlpha - dt * 2);
+
+    advance(dt);
+    updateUI();
+    drawAll();
+  }
+
+  /* ── Init ── */
+  Kit.initI18n(I18N, { onChange: () => { updateLang(); } });
+  updateLang();
+  updateUI();
+  drawAll();
+  Kit.loop(frame);
+
+  window.__demo = {
+    get s() { return { sketch, sketchStride, curTosses, nTrials, runningSum, runningSumSq,
+                       cappedTrials, totalTosses, trialDone, trace }; },
+    advance, resetAll, requestRun, doToss, piStdErr, decFor, fmtCount, toss, startNewWalk,
+    drawTrace, I18N, TAU_CAP, SKETCH_CAP, TOSS_BUDGET, SD_X,
+    setAuto(v) { autoMode = v; }, setSpeed(v) { speed = v; },
+  };
+})();
+</script>
+</body>
+</html>

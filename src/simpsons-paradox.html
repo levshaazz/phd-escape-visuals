@@ -1,0 +1,486 @@
+<!-- OUT: Probability & Statistics/simpsons-paradox.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simpson's Paradox</title>
+<style>
+/*KIT-CSS*/
+
+  /* ── demo-specific ── */
+  #pathCanvas { height: 258px; }
+  #dagCanvas  { height: 84px; }
+
+  .mid-row { display: grid; grid-template-columns: 1fr 250px; gap: 6px; flex-shrink: 0; }
+
+  .tbl { padding: 7px 9px; font-family: var(--mono); font-size: 9.5px; }
+  .tbl table { width: 100%; border-collapse: collapse; }
+  .tbl th { font-size: 8px; font-weight: 600; color: var(--label); text-transform: uppercase;
+            letter-spacing: 0.5px; text-align: right; padding: 0 0 3px 0; }
+  .tbl th:first-child { text-align: left; }
+  .tbl td { text-align: right; padding: 2px 0; color: var(--body); }
+  .tbl td:first-child { text-align: left; color: var(--label); font-size: 8.5px;
+                        text-transform: uppercase; letter-spacing: 0.4px; }
+  .tbl tr.total td { border-top: 1px solid var(--line); padding-top: 4px; }
+  .tbl .rate { font-weight: 700; }
+  .tbl .win  { color: var(--teal); }
+  .tbl .lose { color: #b9c7d4; }
+  .tbl .a { color: var(--blue); }
+  .tbl .b { color: var(--amber); }
+
+  .ctrl-box { padding: 8px 10px; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+  .ctrl-line { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .flip-note { font-size: 9px; line-height: 1.4; color: var(--dim); }
+  .flip-note b { color: var(--amber); }
+
+  .story-row { display: grid; grid-template-columns: 132px 1fr; gap: 6px; flex-shrink: 0; }
+  .story-box { padding: 7px 10px; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+  .verdict { font-size: 11px; line-height: 1.45; color: var(--body); }
+  .verdict .big { font-size: 12px; font-weight: 700; }
+  .verdict .big.a { color: var(--blue); }
+  .verdict .big.b { color: var(--amber); }
+  .verdict .caveat { display: block; margin-top: 3px; font-size: 9.5px; color: var(--dim); }
+
+  @media (max-width: 700px) {
+    .mid-row, .story-row { grid-template-columns: 1fr; }
+    #pathCanvas { height: 300px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 data-i18n="title">Simpson's Paradox</h1>
+    <span class="tag" data-i18n="tagLine">Probability &amp; Statistics</span>
+  </div>
+
+  <div class="hint-bar" data-i18n-html="hook"></div>
+
+  <div class="cbox"><canvas id="pathCanvas"></canvas></div>
+
+  <div class="mid-row">
+    <div class="cbox tbl">
+      <table>
+        <thead>
+          <tr><th data-i18n="thGroup">Group</th>
+              <th class="a" data-i18n="thA">Treatment A</th>
+              <th class="b" data-i18n="thB">Treatment B</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-i18n="gSmall">small stones</td><td id="cAs"></td><td id="cBs"></td></tr>
+          <tr><td data-i18n="gLarge">large stones</td><td id="cAl"></td><td id="cBl"></td></tr>
+          <tr class="total"><td data-i18n="gAll">all patients</td><td id="cAt"></td><td id="cBt"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cbox ctrl-box">
+      <div class="ctrl-line">
+        <span class="ctrl-label" data-i18n="allocLabel">Easy cases given to A</span>
+        <span class="ctrl-val" id="allocVal"></span>
+      </div>
+      <input type="range" id="alloc" min="7" max="350" step="1" value="87">
+      <div class="btn-row">
+        <button class="btn" id="btnReal" data-i18n="presetReal">real data</button>
+        <button class="btn" id="btnFlip" data-i18n="presetFlip">flip point</button>
+        <button class="btn" id="btnFair" data-i18n="presetFair">balanced</button>
+        <button class="btn" id="btnZoom" data-i18n="zoomLabel">zoom</button>
+      </div>
+      <div class="flip-note" id="flipNote"></div>
+    </div>
+  </div>
+
+  <div class="story-row">
+    <div class="cbox" style="padding:4px 6px 0"><canvas id="dagCanvas"></canvas></div>
+    <div class="cbox story-box">
+      <div class="btn-row">
+        <button class="btn active" id="btnConf" data-i18n="storyConf">size is a cause</button>
+        <button class="btn" id="btnMed" data-i18n="storyMed">size is an effect</button>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+  </div>
+
+  <div class="cbox theory">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc" data-lang="en">
+      <h3>Simpson's Paradox</h3>
+      <p>The aggregate slope of a path is the <strong>mediant</strong> of its segment slopes, weighted by their horizontal lengths:</p>
+      <div class="fb"><span class="k-block">\frac{a_1+a_2}{n_1+n_2}\ \text{lies between}\ \frac{a_1}{n_1}\ \text{and}\ \frac{a_2}{n_2}</span></div>
+      <p>Every segment of A is steeper than the matching segment of B, yet A ends lower — because A spends most of its length on the shallow segment. Reversal needs no error in the data; it needs only <strong>unequal allocation</strong>.</p>
+      <p class="note"><strong>The data cannot tell you which answer is right.</strong> If stone size is a <em>cause</em> of both treatment choice and outcome, it is a confounder and you must split by it: A wins. If size is instead an <em>effect</em> of the treatment, splitting blocks part of the very effect you are measuring: B wins. Same table, opposite conclusions — the difference lives in the causal structure, not in the numbers. Berkeley's 1973 admissions figures are the other classic example.</p>
+    </div>
+
+    <div class="tc" data-lang="ru">
+      <h3>Парадокс Симпсона</h3>
+      <p>Наклон всего пути — <strong>медианта</strong> наклонов его звеньев, и она всегда лежит между ними:</p>
+      <div class="fb"><span class="k-block">\frac{a_1+a_2}{n_1+n_2}\ \text{лежит между}\ \frac{a_1}{n_1}\ \text{и}\ \frac{a_2}{n_2}</span></div>
+      <p>Каждое звено A круче соответствующего звена B — и всё-таки A заканчивается ниже, потому что A тратит бóльшую часть длины на пологое звено. Для переворота не нужна ошибка в данных, достаточно <strong>неравномерного распределения пациентов по подгруппам</strong>.</p>
+      <p class="note"><strong>Данные сами не скажут, какой ответ верен.</strong> Если размер камня — <em>причина</em> и выбора лечения, и исхода, это <em>вмешивающийся фактор</em> (конфаундер), и стратификация по нему обязательна: выигрывает A. Если же размер — <em>следствие</em> лечения, то стратификация блокирует часть того самого эффекта, который мы измеряем: выигрывает B. Одна таблица, противоположные выводы — разница в причинной структуре, а не в числах. Второй классический пример — приём в Университет Калифорнии в Беркли в 1973 году.</p>
+    </div>
+
+    <div class="tc" data-lang="tt">
+      <h3>Симпсон парадоксы</h3>
+      <p>Бөтен юлның авышлыгы — аның буыннары авышлыкларының <strong>медиантасы</strong>, горизонталь озынлыклары буенча үлчәнгән:</p>
+      <div class="fb"><span class="k-block">\frac{a_1+a_2}{n_1+n_2}\ \text{арасында ята:}\ \frac{a_1}{n_1}\ \text{һәм}\ \frac{a_2}{n_2}</span></div>
+      <p>A ның һәр буыны B ның тиешле буыныннан текәрәк — шулай да A түбәнрәк тәмамлана, чөнки A озынлыгының күп өлешен ятынрак буынга сарыф итә. Әйләнеп кую өчен мәгълүматта хата кирәкми, <strong>тигезсез бүленеш</strong> җитә.</p>
+      <p class="note"><strong>Мәгълүмат үзе кайсы җавап дөрес икәнен әйтми.</strong> Әгәр таш зурлыгы дәвалау сайлауның да, нәтиҗәнең дә <em>сәбәбе</em> булса, ул конфаундер, һәм аның буенча бүлү мәҗбүри: A җиңә. Ә инде зурлык дәвалауның <em>нәтиҗәсе</em> булса, бүлү нәкъ шул үлчәнә торган эффектның бер өлешен томалый: B җиңә. Бер үк таблица, капма-каршы нәтиҗәләр — аерма сан­нарда түгел, ә сәбәп структурасында. Икенче классик мисал — 1973 елда Берклига кабул итү.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/*KIT-JS*/
+</script>
+<script>
+(() => {
+  'use strict';
+  const { $, rgb, BLUE, AMBER, STEEL, TEAL, RED, BG, drawGlow, sizeCanvas, T, TF } = Kit;
+
+  /* ── data ────────────────────────────────────────────────────────────────
+     Charig et al. 1986, kidney stone treatments. Real published counts; the
+     per-group success rates below are exactly those counts, and the demo keeps
+     them fixed while the ALLOCATION of patients moves. Holding the rates
+     constant is what makes the reversal provably a consequence of allocation
+     and nothing else. */
+  const SMALL_TOTAL = 357, LARGE_TOTAL = 343;      // 87+270, 263+80
+  const PER_ARM = 350;                             // each treatment saw 350 patients
+  const RATE = {
+    A: { small: 81 / 87, large: 192 / 263 },
+    B: { small: 234 / 270, large: 55 / 80 },
+  };
+  const REAL_ALLOC = 87;                           // easy cases that went to A
+
+  // allocation -> the full 2x2x2 table
+  function tableFor(sA) {
+    const aS = sA, aL = PER_ARM - sA;
+    const bS = SMALL_TOTAL - sA, bL = LARGE_TOTAL - aL;
+    const mk = (n, r) => ({ n, k: Math.round(n * r), get p() { return this.n ? this.k / this.n : 0; } });
+    const A = { small: mk(aS, RATE.A.small), large: mk(aL, RATE.A.large) };
+    const B = { small: mk(bS, RATE.B.small), large: mk(bL, RATE.B.large) };
+    A.all = { n: A.small.n + A.large.n, k: A.small.k + A.large.k };
+    B.all = { n: B.small.n + B.large.n, k: B.small.k + B.large.k };
+    A.all.p = A.all.n ? A.all.k / A.all.n : 0;
+    B.all.p = B.all.n ? B.all.k / B.all.n : 0;
+    return { A, B };
+  }
+
+  /* The threshold is scanned, not hard-coded: edit the rates above and the
+     displayed number follows.
+
+     Counts are integers because patients are, so the aggregate rate lives on a
+     lattice of 1/350 = 0.29pp. Within a couple of patients of the crossing the
+     two arms land on the SAME lattice point and the comparison ties — the data
+     genuinely cannot resolve a difference that small. Defining the threshold as
+     "the first allocation from which the reversal never returns" is stable
+     against that, where "first sign change" would not be. */
+  function flipPoint() {
+    let last = null;
+    for (let s = 7; s <= 350; s++) {
+      const t = tableFor(s);
+      if (t.A.all.p < t.B.all.p) last = s;      // paradox still present here
+    }
+    return last === null ? null : Math.min(350, last + 1);
+  }
+  const FLIP = flipPoint();
+
+  /* ── state ── */
+  let alloc = REAL_ALLOC, target = REAL_ALLOC;
+  let story = 'confounder';
+  let zoom = true;
+
+  /* ── i18n ──
+     The table is only declared here; initI18n runs at the very bottom, because
+     it applies the language immediately and that calls render() — which would
+     otherwise touch consts that are still in their temporal dead zone. */
+  const I18N = {
+    title:    { en: "Simpson's Paradox", ru: 'Парадокс Симпсона', tt: 'Симпсон парадоксы' },
+    tagLine:  { en: 'Probability & Statistics', ru: 'Теория вероятностей', tt: 'Ихтималлык теориясе' },
+    hook: {
+      en: '<span class="q">?</span> Treatment <b>A</b> beats <b>B</b> on small stones. It beats <b>B</b> on large stones. It loses on <b>patients</b>.',
+      ru: '<span class="q">?</span> Метод <b>A</b> эффективнее <b>B</b> при мелких камнях. И при крупных. А на <b>всех пациентах сразу</b> — уступает.',
+      tt: '<span class="q">?</span> <b>A</b> дәвалавы вак ташларда <b>B</b> дан яхшырак. Эре ташларда да яхшырак. Ә <b>пациентларда</b> — начаррак.' },
+    thGroup:  { en: 'Group', ru: 'Группа', tt: 'Төркем' },
+    thA:      { en: 'Treatment A', ru: 'Лечение A', tt: 'A дәвалавы' },
+    thB:      { en: 'Treatment B', ru: 'Лечение B', tt: 'B дәвалавы' },
+    gSmall:   { en: 'small stones', ru: 'мелкие камни', tt: 'вак ташлар' },
+    gLarge:   { en: 'large stones', ru: 'крупные камни', tt: 'эре ташлар' },
+    gAll:     { en: 'all patients', ru: 'все пациенты', tt: 'барлык пациентлар' },
+    allocLabel: { en: 'Easy cases given to A', ru: 'Мелких камней у A', tt: 'A дагы җиңел очраклар' },
+    presetReal: { en: 'real data', ru: 'реальные', tt: 'реаль' },
+    presetFlip: { en: 'flip point', ru: 'порог', tt: 'чик' },
+    presetFair: { en: 'balanced', ru: 'поровну', tt: 'тигез' },
+    zoomBadge:  { en: 'ZOOMED',   ru: 'КРУПНО',  tt: 'ЭРЕ' },
+    zoomLabel:  { en: 'zoom', ru: 'крупно', tt: 'зум' },
+    storyConf:  { en: 'size is a cause', ru: 'размер — причина', tt: 'зурлык — сәбәп' },
+    storyMed:   { en: 'size is an effect', ru: 'размер — следствие', tt: 'зурлык — нәтиҗә' },
+    flipYes: {
+      en: n => `Paradox holds. It disappears once A also gets <b>${n}</b> easy cases.`,
+      ru: n => `Парадокс есть. Он исчезает, когда у A становится <b>${n}</b> мелких камней.`,
+      tt: n => `Парадокс бар. A да <b>${n}</b> җиңел очрак булгач ул юкка чыга.` },
+    flipNo: {
+      en: n => `No paradox here: A wins overall too. It returns below <b>${n}</b> easy cases.`,
+      ru: n => `Парадокса нет: A выигрывает и в сумме. Он вернётся ниже <b>${n}</b> мелких камней.`,
+      tt: n => `Парадокс юк: A гомумән дә җиңә. <b>${n}</b> тан ким җиңел очракта ул кайта.` },
+    vConf: {
+      en: 'Size causes both treatment choice and outcome — a <b>confounder</b>. Split by it: <span class="big a">A is better</span>.',
+      ru: 'Размер влияет и на выбор лечения, и на исход — это <b>вмешивающийся фактор</b>. Стратифицируем: <span class="big a">эффективнее A</span>.',
+      tt: 'Зурлык дәвалау сайлауга да, нәтиҗәгә дә тәэсир итә — бу <b>конфаундер</b>. Бүләбез: <span class="big a">A яхшырак</span>.' },
+    vMed: {
+      en: 'Size is measured <em>after</em> treatment — an <b>effect</b>. Splitting hides part of the effect: <span class="big b">B is better</span>.',
+      ru: 'Размер измерен <em>после</em> лечения — это <b>промежуточная переменная</b>. Стратификация скрывает часть эффекта: <span class="big b">эффективнее B</span>.',
+      tt: 'Зурлык дәвалаудан <em>соң</em> үлчәнгән — бу <b>нәтиҗә</b>. Бүлү эффектның бер өлешен яшерә: <span class="big b">B яхшырак</span>.' },
+    caveat: {
+      en: 'The numbers are identical in both stories.',
+      ru: 'Числа в обеих историях одинаковые.',
+      tt: 'Ике хикәядә дә саннар бертөрле.' },
+    axisX:   { en: 'patients', ru: 'пациенты', tt: 'пациентлар' },
+    axisY:   { en: 'successes', ru: 'успешные исходы', tt: 'уңышлар' },
+    axisYz:  { en: v => `successes − ${v} × patients`, ru: v => `успешные исходы − ${v} × пациенты`, tt: v => `уңышлар − ${v} × пациентлар` },
+    legendA: { en: 'A', ru: 'A', tt: 'A' },
+    legendB: { en: 'B', ru: 'B', tt: 'B' },
+    nodeT:   { en: 'treat', ru: 'лечение', tt: 'дәвалау' },
+    nodeS:   { en: 'size', ru: 'размер', tt: 'зурлык' },
+    nodeO:   { en: 'outcome', ru: 'исход', tt: 'нәтиҗә' },
+  };
+
+  /* ── canvases ── */
+  let pDim, dDim;
+  function resize() {
+    pDim = sizeCanvas($('pathCanvas'));
+    dDim = sizeCanvas($('dagCanvas'));
+  }
+  window.addEventListener('resize', () => { resize(); render(); });
+  resize();
+
+  /* ── the path plot ──
+     x = patients treated, y = successes, so the slope of any segment IS its
+     success rate and the slope of the chord from the origin IS the aggregate
+     rate. Unzoomed that is honest but cramped: the rates here span 0.69..0.93,
+     which is only a few degrees. `zoom` subtracts a baseline slope so the
+     differences are visible; the axis says exactly what it is showing. */
+  const BASE = 0.6;
+
+  function drawPaths() {
+    const ctx = pDim.ctx;
+    /* b must clear BOTH rows drawn under the axis: the tick numbers at +12 and
+       the caption at +22. At b:26 the caption baseline landed at h-4 and the
+       canvas cut the glyphs in half — visible in every locale, invisible to any
+       test that only looks at strings. */
+    const co = Kit.frame(ctx, pDim, { l: 46, r: 14, t: 22, b: 38 });
+    const t = tableFor(alloc);
+    const k = zoom ? BASE : 0;
+
+    const yMaxRaw = PER_ARM * (1 - k);
+    const yTop = zoom ? PER_ARM * (1 - k) * 0.62 : yMaxRaw;   // headroom, keeps curves inside
+    const X = v => co.l + (v / PER_ARM) * co.w;
+    const Y = v => co.b - ((v) / yTop) * co.h;
+    const shear = (n, s) => s - k * n;                        // successes above the baseline
+
+    Kit.axes(ctx, co, null);
+
+    // gridlines + x ticks
+    ctx.font = "500 7px ui-monospace, Consolas, monospace"; ctx.textAlign = 'center';
+    for (let v = 0; v <= PER_ARM; v += 70) {
+      const x = X(v);
+      ctx.strokeStyle = 'rgba(136,153,170,0.07)';
+      ctx.beginPath(); ctx.moveTo(x, co.t); ctx.lineTo(x, co.b); ctx.stroke();
+      ctx.fillStyle = rgb(STEEL, 0.85); ctx.fillText(v, x, co.b + 12);
+    }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(STEEL, 0.85);
+    ctx.fillText(T('axisX'), co.l, co.b + 22);
+    ctx.textAlign = 'right';
+    ctx.fillText(zoom ? TF('axisYz', BASE) : T('axisY'), co.r, co.b + 22);
+
+    // one treatment: two segments head to tail, plus the chord to the endpoint
+    function path(arm, colour, dashChord) {
+      const segs = [arm.small, arm.large];
+      let n = 0, s = 0;
+      ctx.strokeStyle = rgb(colour, 0.95); ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+      const verts = [{ n: 0, s: 0 }];
+      for (const g of segs) {
+        n += g.n; s += g.k;
+        ctx.lineTo(X(n), Y(shear(n, s)));
+        verts.push({ n, s });
+      }
+      ctx.stroke();
+
+      // chord = the aggregate rate
+      ctx.strokeStyle = rgb(colour, 0.45); ctx.lineWidth = 1.2;
+      ctx.setLineDash(dashChord);
+      ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(n), Y(shear(n, s))); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // vertices
+      for (const v of verts.slice(1)) {
+        const x = X(v.n), y = Y(shear(v.n, v.s));
+        drawGlow(ctx, x, y, 9, colour, 0.45);
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = rgb(colour, 1); ctx.fill();
+      }
+      return verts;
+    }
+
+    const vA = path(t.A, BLUE, [4, 3]);
+    const vB = path(t.B, AMBER, [4, 3]);
+
+    // segment slope labels, placed at each segment's midpoint
+    ctx.font = "600 8px ui-monospace, Consolas, monospace";
+    const seglabel = (verts, arm, colour) => {
+      const segs = [arm.small, arm.large];
+      for (let i = 0; i < 2; i++) {
+        if (!segs[i].n) continue;
+        const a = verts[i], b = verts[i + 1];
+        const mx = (X(a.n) + X(b.n)) / 2, my = (Y(shear(a.n, a.s)) + Y(shear(b.n, b.s))) / 2;
+        ctx.fillStyle = rgb(colour, 0.95); ctx.textAlign = 'center';
+        ctx.fillText(Kit.fmt(segs[i].p, 0), mx, my - 6);
+      }
+    };
+    seglabel(vA, t.A, BLUE);
+    seglabel(vB, t.B, AMBER);
+
+    // endpoints: the aggregate, which is the whole point. Labels go clear of the
+    // markers and of the chords that end there — above the higher one, below the
+    // lower one, so they never collide however the allocation moves.
+    const endA = { x: X(t.A.all.n), y: Y(shear(t.A.all.n, t.A.all.k)) };
+    const endB = { x: X(t.B.all.n), y: Y(shear(t.B.all.n, t.B.all.k)) };
+    const aOnTop = endA.y <= endB.y;
+    ctx.textAlign = 'right'; ctx.font = "700 11px ui-monospace, Consolas, monospace";
+    ctx.fillStyle = rgb(BLUE, 1);
+    ctx.fillText('A ' + Kit.fmt(t.A.all.p, 1), endA.x - 8, endA.y + (aOnTop ? -8 : 15));
+    ctx.fillStyle = rgb(AMBER, 1);
+    ctx.fillText('B ' + Kit.fmt(t.B.all.p, 1), endB.x - 8, endB.y + (aOnTop ? 15 : -8));
+
+    // the gap between the two endpoints IS the reversal
+    const gap = Math.abs(endA.y - endB.y);
+    if (gap > 3) {
+      ctx.strokeStyle = rgb(t.A.all.p > t.B.all.p ? BLUE : AMBER, 0.55);
+      ctx.setLineDash([2, 2]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(endA.x + 4, endA.y); ctx.lineTo(endB.x + 4, endB.y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.font = '600 8px system-ui, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(STEEL, 0.9);
+    ctx.fillText(zoom ? T('zoomBadge') : '1:1', co.l, co.t - 8);
+  }
+
+  /* ── the two causal stories ── */
+  function drawDag() {
+    const ctx = dDim.ctx;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, dDim.w, dDim.h);
+    const cx = dDim.w / 2, top = 20, bot = dDim.h - 26;
+    const N = {
+      S: { x: cx, y: top, label: T('nodeS') },
+      T: { x: cx - dDim.w * 0.29, y: bot, label: T('nodeT') },
+      O: { x: cx + dDim.w * 0.29, y: bot, label: T('nodeO') },
+    };
+    const arrow = (a, b, colour) => {
+      const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+      const ux = dx / L, uy = dy / L, pad = 13;
+      const x1 = a.x + ux * pad, y1 = a.y + uy * pad, x2 = b.x - ux * pad, y2 = b.y - uy * pad;
+      ctx.strokeStyle = rgb(colour, 0.8); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      const ang = Math.atan2(uy, ux);
+      ctx.fillStyle = rgb(colour, 0.9);
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 5 * Math.cos(ang - 0.4), y2 - 5 * Math.sin(ang - 0.4));
+      ctx.lineTo(x2 - 5 * Math.cos(ang + 0.4), y2 - 5 * Math.sin(ang + 0.4));
+      ctx.closePath(); ctx.fill();
+    };
+
+    if (story === 'confounder') { arrow(N.S, N.T, RED); arrow(N.S, N.O, RED); }
+    else { arrow(N.T, N.S, RED); arrow(N.S, N.O, RED); }
+    arrow(N.T, N.O, STEEL);
+
+    /* Labels sit outside the nodes: a translated word never fits inside a 22px
+       circle, and truncating it ("outcom") is worse than placing it below. */
+    ctx.font = "600 7.5px system-ui, sans-serif"; ctx.textAlign = 'center';
+    for (const key of ['S', 'T', 'O']) {
+      const n = N[key];
+      const on = (key === 'S');
+      ctx.beginPath(); ctx.arc(n.x, n.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = on ? 'rgba(232,128,128,0.18)' : 'rgba(60,130,200,0.14)';
+      ctx.fill();
+      ctx.strokeStyle = on ? rgb(RED, 0.7) : rgb(STEEL, 0.5); ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = on ? '#f0b0b0' : '#c3d2df';
+      ctx.fillText(n.label, n.x, n.y + (key === 'S' ? -12 : 20));
+    }
+  }
+
+  /* ── DOM ── */
+  const cell = g => `${g.k}/${g.n}`;
+  function render() {
+    const t = tableFor(Math.round(alloc));
+    const put = (id, g, better) => {
+      const el = $(id);
+      el.innerHTML = `${cell(g)} <span class="rate ${better ? 'win' : 'lose'}">${Kit.fmt(g.p, 1)}</span>`;
+    };
+    put('cAs', t.A.small, t.A.small.p >= t.B.small.p);
+    put('cBs', t.B.small, t.B.small.p > t.A.small.p);
+    put('cAl', t.A.large, t.A.large.p >= t.B.large.p);
+    put('cBl', t.B.large, t.B.large.p > t.A.large.p);
+    put('cAt', t.A.all, t.A.all.p >= t.B.all.p);
+    put('cBt', t.B.all, t.B.all.p > t.A.all.p);
+
+    $('allocVal').textContent = Math.round(alloc) + ' / ' + PER_ARM;
+    const paradox = t.A.all.p < t.B.all.p;
+    $('flipNote').innerHTML = TF(paradox ? 'flipYes' : 'flipNo', FLIP);
+    $('verdict').innerHTML = T(story === 'confounder' ? 'vConf' : 'vMed')
+      + `<span class="caveat">${T('caveat')}</span>`;
+
+    $('btnZoom').classList.toggle('active', zoom);
+    $('btnConf').classList.toggle('active', story === 'confounder');
+    $('btnMed').classList.toggle('active', story !== 'confounder');
+    $('alloc').value = Math.round(alloc);
+
+    drawPaths();
+    drawDag();
+  }
+
+  /* ── controls ── */
+  const setTarget = v => { target = Math.max(7, Math.min(350, v)); };
+  $('alloc').addEventListener('input', e => { alloc = target = parseFloat(e.target.value); render(); });
+  $('btnReal').addEventListener('click', () => setTarget(REAL_ALLOC));
+  $('btnFlip').addEventListener('click', () => setTarget(FLIP));
+  $('btnFair').addEventListener('click', () => setTarget(Math.round(SMALL_TOTAL * PER_ARM / (SMALL_TOTAL + LARGE_TOTAL))));
+  $('btnZoom').addEventListener('click', () => { zoom = !zoom; render(); });
+  $('btnConf').addEventListener('click', () => { story = 'confounder'; render(); });
+  $('btnMed').addEventListener('click', () => { story = 'mediator'; render(); });
+
+  Kit.onKey({
+    ArrowLeft:  () => { setTarget(target - 5); },
+    ArrowRight: () => { setTarget(target + 5); },
+    Home: () => setTarget(7), End: () => setTarget(350),
+    ' ': () => { story = story === 'confounder' ? 'mediator' : 'confounder'; render(); },
+  });
+
+  /* Animating the allocation is the point of the demo: the reversal is not a
+     fact to be read off a table, it is something you watch happen. */
+  Kit.loop(dt => {
+    if (Math.abs(alloc - target) > 0.3) {
+      alloc += (target - alloc) * Math.min(1, dt * 7);
+      render();
+    } else if (alloc !== target) { alloc = target; render(); }
+  });
+
+  Kit.initI18n(I18N, { onChange: () => { render(); Kit.lockTheoryHeight(); } });
+  Kit.autoLockTheory();
+  render();
+
+  window.__demo = { tableFor, flipPoint, FLIP, RATE, PER_ARM, SMALL_TOTAL, LARGE_TOTAL, REAL_ALLOC,
+                    I18N, drawPaths, setZoom: v => { zoom = v; },
+                    dims: () => ({ w: pDim.w, h: pDim.h }) };
+})();
+</script>
+</body>
+</html>

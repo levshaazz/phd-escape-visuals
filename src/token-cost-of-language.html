@@ -1,0 +1,440 @@
+<!-- OUT: Natural Language Processing/token-cost-of-language.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Token Cost of a Language</title>
+<style>
+/*KIT-CSS*/
+
+  /* ── demo-specific ── */
+  #barCanvas { height: 96px; }
+
+  .text-row { display: flex; gap: 6px; align-items: stretch; flex-shrink: 0; }
+  .text-box { flex: 1; padding: 6px 9px; display: flex; flex-direction: column; gap: 4px; }
+  .src-line { font-family: var(--mono); font-size: 9.5px; line-height: 1.45; color: var(--body); }
+  .src-line .lg { color: var(--label); font-weight: 700; margin-right: 5px; }
+
+  .toks-area { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+  .lang-row { display: flex; align-items: flex-start; gap: 6px; }
+  .lang-badge {
+    font-family: var(--mono); font-size: 9px; font-weight: 700; color: var(--label);
+    width: 22px; flex-shrink: 0; padding-top: 3px;
+  }
+  .lang-toks { display: flex; gap: 1.5px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .lang-count { font-family: var(--mono); font-size: 10px; font-weight: 700; flex-shrink: 0;
+                min-width: 62px; text-align: right; padding-top: 2px; }
+  .tok {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 1px 4px; border-radius: 3px; font-family: var(--mono);
+    font-size: 9px; font-weight: 500; white-space: pre; line-height: 1.15;
+  }
+  .tok[title] { cursor: help; }
+
+  .mix-row { display: grid; grid-template-columns: 1fr 232px; gap: 6px; flex-shrink: 0; }
+  .mix-box { padding: 7px 10px; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+  .mix-line { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .mix-legend { font-family: var(--mono); font-size: 9px; color: var(--dim); }
+  .mix-legend b { color: var(--text); }
+
+  .cost { padding: 7px 10px; font-size: 10px; line-height: 1.5; color: var(--body); }
+  .cost .big { font-family: var(--mono); font-size: 15px; font-weight: 700; }
+  .cost .rowline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .cost .lbl { font-size: 8.5px; color: var(--label); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  @media (max-width: 700px) {
+    .mix-row { grid-template-columns: 1fr; }
+    .toks-area { max-height: 320px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 data-i18n="title">The Token Cost of a Language</h1>
+    <span class="tag" data-i18n="tagLine">Natural Language Processing</span>
+  </div>
+
+  <div class="hint-bar" data-i18n-html="hook"></div>
+
+  <div class="text-row">
+    <div class="cbox text-box">
+      <div class="btn-row" id="presets">
+        <button class="btn active" data-key="cat" data-i18n="pcCat">everyday</button>
+        <button class="btn" data-key="nyq" data-i18n="pcNyq">Nyquist</button>
+        <button class="btn" data-key="conv" data-i18n="pcConv">convolution</button>
+        <button class="btn" data-key="num" data-i18n="pcNum">numbers</button>
+      </div>
+      <div class="src-line" id="srcEn"></div>
+      <div class="src-line" id="srcRu"></div>
+      <div class="src-line" id="srcTt"></div>
+    </div>
+  </div>
+
+  <div class="cbox toks-area" id="toks"></div>
+
+  <div class="mix-row">
+    <div class="cbox mix-box">
+      <div class="mix-line">
+        <span class="ctrl-label" data-i18n="mixLabel">English share of the training data</span>
+        <span class="ctrl-val" id="mixVal"></span>
+      </div>
+      <input type="range" id="mix" min="34" max="100" step="1" value="90">
+      <div class="mix-legend" id="mixLegend"></div>
+      <div class="btn-row">
+        <button class="btn" id="btnSkew" data-i18n="presetSkew">English-dominant</button>
+        <button class="btn" id="btnBal" data-i18n="presetBal">balanced</button>
+      </div>
+    </div>
+    <div class="cbox cost" id="cost"></div>
+  </div>
+
+  <div class="cbox"><canvas id="barCanvas"></canvas></div>
+
+  <div class="cbox theory">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc" data-lang="en">
+      <h3>Why the same sentence costs more</h3>
+      <p>One byte-level BPE is trained here and <strong>the same model</strong> tokenizes all three languages — training a separate tokenizer per language would erase the very effect being measured. Three things stack up:</p>
+      <p><strong>Script.</strong> UTF-8 spends 1 byte on a Latin letter and 2 on a Cyrillic one, so before any merge is learned Russian and Tatar already start at <span class="k">\times 2</span>. <strong>Vocabulary.</strong> Merges are learned from whatever dominates the training data; a language that is not there stays near the byte level. <strong>Morphology.</strong> Tatar is agglutinative and packs more meaning per word, which pushes the other way — hard enough that with a tokenizer of its <em>own</em> it needs <strong>fewer</strong> tokens than English for the same sentence.</p>
+      <p class="note"><strong>Move the slider.</strong> The gap is not a property of the languages — it is a property of the <em>training mix</em>. Balance the corpus and the gap largely closes. That is the whole argument: tokenizer cost is a design decision, and it is paid by whoever was not in the training data. The sentences carry no punctuation, so the comparison does not turn on each language’s comma rules. Absolute numbers here are illustrative — the corpus is tiny — so read the <em>ratios</em>.</p>
+    </div>
+
+    <div class="tc" data-lang="ru">
+      <h3>Почему одно и то же предложение дороже</h3>
+      <p>Здесь обучается один байтовый BPE, и <strong>одна и та же модель</strong> токенизирует все три языка — обучение отдельного токенизатора для каждого языка стёрло бы измеряемый эффект. Складываются три вещи:</p>
+      <p><strong>Письменность.</strong> UTF-8 тратит 1 байт на латинскую букву и 2 на кириллическую, поэтому ещё до всяких слияний русский и татарский стартуют с <span class="k">\times 2</span>. <strong>Словарь.</strong> Слияния выучиваются из того, что преобладает в обучающих данных; язык, которого там нет, остаётся на байтовом уровне. <strong>Морфология.</strong> Татарский — агглютинативный язык, он упаковывает больше смысла в слово — настолько, что со <em>своим</em> токенизатором на то же предложение ему нужно <strong>меньше</strong> токенов, чем английскому.</p>
+      <p class="note"><strong>Подвигайте ползунок.</strong> Разрыв — свойство не языков, а <em>состава обучающих данных</em>. Сбалансируйте корпус, и разрыв почти закроется. В этом весь аргумент: цена токенизатора — проектное решение, и платит за него тот, кого не было в обучающей выборке. Фразы даны без знаков препинания — чтобы сравнение не зависело от пунктуационных норм каждого языка. Абсолютные числа иллюстративны (корпус игрушечный) — смотрите на <em>отношения</em>.</p>
+    </div>
+
+    <div class="tc" data-lang="tt">
+      <h3>Ни өчен бер үк җөмлә кыйммәтрәк</h3>
+      <p>Монда бер байт дәрәҗәсендәге BPE өйрәтелә, һәм <strong>бер үк модель</strong> өч телне дә токенлаштыра — һәр телгә аерым токенизатор өйрәтү үлчәнә торган эффектны бөтенләй юкка чыгарыр иде. Өч нәрсә өстәлә:</p>
+      <p><strong>Язу.</strong> UTF-8 латин хәрефенә 1 байт, кириллицага 2 байт сарыф итә, шуңа күрә берләшүләргә кадәр үк рус һәм татар <span class="k">\times 2</span> дән башлый. <strong>Сүзлек.</strong> Берләшүләр өйрәтү мәгълүматында өстенлек итүчедән өйрәнелә; анда булмаган тел байт дәрәҗәсендә кала. <strong>Морфология.</strong> Татар теле агглютинатив, бер сүзгә күбрәк мәгънә сыйдыра — шул кадәр киресенчә эшли ки, <em>үз</em> токенизаторы белән анар шул үк жөмләгә инглизчәдән <strong>азрак</strong> токен кирәк.</p>
+      <p class="note"><strong>Йөгерткечне күчерегез.</strong> Аерма телләрнең түгел, ә <em>өйрәтү мәгълүматлары составының</em> үзлеге. Корпусны тигезләгез — аерма диярлек ябыла. Бөтен дәлил шунда: токенизатор бәясе — проект карары, һәм аны өйрәтү выборкасында булмаган кеше түли. Монда абсолют саннар иллюстратив (корпус уенчык) — <em>чагыштырмаларга</em> карагыз.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/*KIT-JS*/
+</script>
+<script>
+(() => {
+  'use strict';
+  const { $, rgb, BLUE, AMBER, STEEL, TEAL, VIOLET, BG, sizeCanvas, T, TF } = Kit;
+
+  /* ── parallel corpus ────────────────────────────────────────────────────
+     Genuinely parallel: each row is the same meaning in three languages, so
+     "tokens for this row" is comparable. Tokens per WORD would not be — Tatar is
+     agglutinative and one of its words is several English ones. Three of the
+     four rows are lifted from the theory panels of the other demos in this
+     repository, which were written as parallel text in the first place. */
+  const TEXTS = {
+    cat: {
+      en: 'the cat sat on the mat and watched the rain fall on the old roof',
+      ru: 'кот сидел на коврике и смотрел как дождь падает на старую крышу',
+      tt: 'мәче келәм өстендә утырды һәм яңгырның иске түбәгә явуын карады',
+    },
+    nyq: {
+      en: 'a signal can be perfectly reconstructed from samples if the Nyquist condition holds',
+      ru: 'сигнал точно восстановим из отсчётов если выполнено условие Найквиста',
+      tt: 'сигнал дискрет отсчётлардан төгәл торгызыла әгәр Найквист шарты үтәлсә',
+    },
+    conv: {
+      en: 'flip the signal shift it multiply pointwise and integrate the product',
+      ru: 'отразить сигнал сдвинуть перемножить поточечно и проинтегрировать произведение',
+      tt: 'сигналны чагылдыр күчер поточкалы тапкырла һәм тапкырлауны интеграллә',
+    },
+    num: {
+      en: 'in 2024 the model used 128 tokens per second on 4 GPUs',
+      ru: 'в 2024 году модель использовала 128 токенов в секунду на 4 GPU',
+      tt: '2024 елда модель секундына 128 токен кулланды 4 GPU да',
+    },
+  };
+  const LANGS = ['en', 'ru', 'tt'];
+
+  /* ── byte-level BPE ──
+     GPT-2's convention: the space before a word stays in the stream as `Ġ`, so
+     word boundaries survive and the text can be detokenised. */
+  const ENC = new TextEncoder();
+  const BYTE_MARK = 'Ġ';
+  const byteTok = b => b === 32 ? BYTE_MARK
+    : (b === 0x3c || b === 0x3e) ? '<' + b.toString(16) + '>'
+    : (b >= 33 && b < 127) ? String.fromCharCode(b)
+    : '<' + b.toString(16).padStart(2, '0') + '>';
+  const wordBytes = w => Array.from(ENC.encode(' ' + w)).map(byteTok);
+  const words = t => t.trim().split(/\s+/).filter(Boolean);
+
+  /* Word frequencies weighted by the language mix. Weighting the FREQUENCIES is
+     the same thing as repeating the text, and it keeps the corpus size fixed so
+     the merge count means the same at every mix setting. */
+  function mixedFreqs(share) {
+    const f = Object.create(null);
+    for (const lg of LANGS) {
+      const w = share[lg];
+      for (const key of Object.keys(TEXTS)) {
+        for (const word of words(TEXTS[key][lg])) f[word] = (f[word] || 0) + w;
+      }
+    }
+    return Object.entries(f).sort((a, b) => b[1] - a[1]);
+  }
+
+  const MERGES = 150;
+  function train(share) {
+    let st = mixedFreqs(share).map(([w, f]) => [w, f, wordBytes(w)]);
+    const merges = [], vocab = new Set();
+    st.forEach(([, , t]) => t.forEach(x => vocab.add(x)));
+    for (let i = 0; i < MERGES; i++) {
+      const pc = Object.create(null);
+      for (const [, f, toks] of st) {
+        for (let j = 0; j < toks.length - 1; j++) {
+          const k = toks[j] + '\t' + toks[j + 1];
+          pc[k] = (pc[k] || 0) + f;
+        }
+      }
+      const keys = Object.keys(pc);
+      if (!keys.length) break;
+      let best = keys[0];
+      for (const k of keys) if (pc[k] > pc[best]) best = k;
+      const [a, b] = best.split('\t'), m = a + b;
+      st = st.map(([w, f, toks]) => {
+        const nt = []; let j = 0;
+        while (j < toks.length) {
+          if (j < toks.length - 1 && toks[j] === a && toks[j + 1] === b) { nt.push(m); j += 2; }
+          else { nt.push(toks[j]); j++; }
+        }
+        return [w, f, nt];
+      });
+      vocab.add(m); merges.push([a, b, m]);
+    }
+    return { merges, vocab };
+  }
+
+  function encode(text, model) {
+    const out = [];
+    for (const w of words(text)) {
+      let toks = wordBytes(w);
+      for (const [a, b, m] of model.merges) {
+        const nt = []; let j = 0;
+        while (j < toks.length) {
+          if (j < toks.length - 1 && toks[j] === a && toks[j + 1] === b) { nt.push(m); j += 2; }
+          else { nt.push(toks[j]); j++; }
+        }
+        toks = nt;
+      }
+      out.push(...toks);
+    }
+    return out;
+  }
+
+  const byteLen = t => ENC.encode(t).length;
+
+  /* One model, every language. Structuring it this way makes the cardinal
+     mistake — a separate tokenizer per language, which would erase the effect —
+     impossible to make by accident. */
+  function measure(model, key) {
+    const r = {};
+    for (const lg of LANGS) {
+      const text = TEXTS[key][lg];
+      const toks = encode(text, model);
+      r[lg] = { toks, n: toks.length, bytes: byteLen(text), chars: [...text].length };
+    }
+    for (const lg of LANGS) r[lg].ratio = r[lg].n / r.en.n;
+    return r;
+  }
+
+  const shareFor = en => ({ en, ru: (1 - en) / 2, tt: (1 - en) / 2 });
+  const BALANCED = shareFor(1 / 3);
+
+  /* ── state ── */
+  let mix = 0.90, key = 'cat';
+  let model = null, res = null, resBal = null;
+
+  function recompute() {
+    model = train(shareFor(mix));
+    res = measure(model, key);
+    resBal = measure(train(BALANCED), key);
+  }
+
+  /* ── colours: a merged piece keeps the colour of its first unit ── */
+  const PAL = [
+    { bg: 'rgba(99,179,237,0.20)',  fg: '#7ac0f0' }, { bg: 'rgba(154,230,180,0.20)', fg: '#8ad4a0' },
+    { bg: 'rgba(246,173,85,0.22)',  fg: '#e8a860' }, { bg: 'rgba(252,129,129,0.20)', fg: '#e88080' },
+    { bg: 'rgba(183,148,244,0.20)', fg: '#b494f4' }, { bg: 'rgba(129,230,217,0.20)', fg: '#80d8cc' },
+    { bg: 'rgba(252,163,204,0.20)', fg: '#e89cc0' }, { bg: 'rgba(160,190,230,0.20)', fg: '#a0bee6' },
+  ];
+  const units = t => t.match(/<[0-9a-f]{2}>|[\s\S]/g) || [t];
+  function clr(t) {
+    const u = units(t)[0];
+    let h = 0; for (let i = 0; i < u.length; i++) h = ((h << 5) - h + u.charCodeAt(i)) | 0;
+    return PAL[(h >>> 0) % PAL.length];
+  }
+  function tip(t) {
+    if (!/<[0-9a-f]{2}>/.test(t)) return null;
+    const parts = units(t);
+    const bytes = new Uint8Array(parts.map(p => p === BYTE_MARK ? 32
+      : (p.length === 4 ? parseInt(p.slice(1, 3), 16) : p.charCodeAt(0))));
+    try { return 'UTF-8 → "' + new TextDecoder('utf-8', { fatal: true }).decode(bytes) + '"'; }
+    catch (e) { return 'UTF-8 ' + parts.filter(p => p.length === 4).map(p => '0x' + p.slice(1, 3).toUpperCase()).join(' '); }
+  }
+
+  /* ── i18n ── */
+  const I18N = {
+    title:   { en: 'The Token Cost of a Language', ru: 'Цена языка в токенах', tt: 'Телнең токендагы бәясе' },
+    tagLine: { en: 'Natural Language Processing', ru: 'Обработка естественного языка', tt: 'Табигый телне эшкәртү' },
+    hook: {
+      en: '<span class="q">?</span> The same sentence, three languages, <b>one tokenizer</b>. Who pays more — and is it the language, or the training data?',
+      ru: '<span class="q">?</span> Одно предложение, три языка, <b>один токенизатор</b>. Кто платит больше — и виноват язык или обучающие данные?',
+      tt: '<span class="q">?</span> Бер җөмлә, өч тел, <b>бер токенизатор</b>. Кем күбрәк түли — тел гаеплеме, әллә өйрәтү мәгълүматларымы?' },
+    pcCat:      { en: 'everyday',    ru: 'бытовая',      tt: 'көнкүреш' },
+    pcNyq:      { en: 'Nyquist',     ru: 'Найквист',     tt: 'Найквист' },
+    pcConv:     { en: 'convolution', ru: 'свёртка',      tt: 'конволюция' },
+    pcNum:      { en: 'numbers',     ru: 'числа',        tt: 'саннар' },
+    mixLabel:   { en: 'English share of the training data', ru: 'Доля английского в обучающих данных', tt: 'Өйрәтүдә инглиз өлеше' },
+    presetSkew: { en: 'English-dominant', ru: 'перевес английского', tt: 'инглиз өстенлекле' },
+    presetBal:  { en: 'balanced', ru: 'сбалансированный', tt: 'тигезләнгән' },
+    mixNote:    { en: (e, o) => `EN <b>${e}%</b> · RU <b>${o}%</b> · TT <b>${o}%</b> — ${MERGES} merges at any setting`,
+                  ru: (e, o) => `EN <b>${e}%</b> · RU <b>${o}%</b> · TT <b>${o}%</b> — ${MERGES} слияний при любом положении`,
+                  tt: (e, o) => `EN <b>${e}%</b> · RU <b>${o}%</b> · TT <b>${o}%</b> — ике очракта да ${MERGES} берләшү` },
+    costLbl:    { en: 'Cost relative to English', ru: 'Цена относительно английского', tt: 'Инглизгә карата бәя' },
+    ctxLbl:     { en: 'A context window holds', ru: 'В контекст помещается', tt: 'Контекстка сыя' },
+    ctxOf:      { en: v => `${v} of the text`, ru: v => `${v} текста`, tt: v => `текстның ${v}` },
+    barTitle:   { en: 'TOKENS: NOW · IF BALANCED · RAW BYTES',
+                  ru: 'ТОКЕНЫ: СЕЙЧАС · ПРИ БАЛАНСЕ · БАЙТЫ БЕЗ СЛИЯНИЙ',
+                  tt: 'ТОКЕННАР: ХӘЗЕР · ТИГЕЗЛӘНГӘНДӘ · ЧИМАЛ БАЙТЛАР' },
+    legNow:     { en: 'now', ru: 'сейчас', tt: 'хәзер' },
+    legBal:     { en: 'balanced', ru: 'баланс', tt: 'тигез' },
+    legBytes:   { en: 'bytes', ru: 'байты', tt: 'байтлар' },
+  };
+
+  /* ── canvas ── */
+  let bDim;
+  function resize() { bDim = sizeCanvas($('barCanvas')); }
+  window.addEventListener('resize', () => { resize(); render(); });
+  resize();
+
+  /* Three marks on one bar rather than a stacked decomposition: at a high
+     English share English does BETTER than balanced, so a "wasted extra"
+     segment would have to render as a negative length. */
+  function drawBars() {
+    const ctx = bDim.ctx;
+    const co = Kit.frame(ctx, bDim, { l: 30, r: 66, t: 16, b: 8 });
+    const maxV = Math.max(...LANGS.map(l => Math.max(res[l].n, resBal[l].n, res[l].bytes))) * 1.04;
+    const X = v => co.l + (v / maxV) * co.w;
+    const rowH = co.h / LANGS.length;
+
+    ctx.font = '600 8px system-ui, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(STEEL, 0.9); ctx.fillText(T('barTitle'), co.l, co.t - 5);
+
+    LANGS.forEach((lg, i) => {
+      const y = co.t + i * rowH + rowH / 2;
+      const h = Math.min(13, rowH * 0.52);
+
+      ctx.font = "700 9px ui-monospace, Consolas, monospace"; ctx.textAlign = 'left';
+      ctx.fillStyle = rgb(STEEL, 0.95); ctx.fillText(lg.toUpperCase(), 4, y + 3);
+
+      // raw bytes: what it would cost with no merges at all
+      ctx.fillStyle = 'rgba(136,153,170,0.18)';
+      ctx.fillRect(co.l, y - h / 2, X(res[lg].bytes) - co.l, h);
+
+      // tokens at the current mix
+      const col = lg === 'en' ? BLUE : lg === 'ru' ? AMBER : VIOLET;
+      ctx.fillStyle = rgb(col, 0.85);
+      ctx.fillRect(co.l, y - h / 2, X(res[lg].n) - co.l, h);
+
+      // what a balanced corpus would have achieved
+      const xb = X(resBal[lg].n);
+      ctx.strokeStyle = rgb(TEAL, 0.95); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(xb, y - h / 2 - 3); ctx.lineTo(xb, y + h / 2 + 3); ctx.stroke();
+
+      ctx.font = "700 10px ui-monospace, Consolas, monospace"; ctx.textAlign = 'right';
+      ctx.fillStyle = rgb(col, 1);
+      ctx.fillText(res[lg].n + '  ×' + res[lg].ratio.toFixed(2), bDim.w - 4, y + 4);
+    });
+
+    // legend
+    ctx.font = "500 7.5px ui-monospace, Consolas, monospace"; ctx.textAlign = 'right';
+    ctx.fillStyle = rgb(TEAL, 0.95); ctx.fillText('| ' + T('legBal'), co.r + 60, co.t - 5);
+    ctx.fillStyle = rgb(STEEL, 0.7); ctx.fillText(T('legBytes'), co.r - 6, co.t - 5);
+  }
+
+  /* ── DOM ── */
+  function render() {
+    for (const lg of LANGS) {
+      $('src' + lg[0].toUpperCase() + lg[1]).innerHTML =
+        `<span class="lg">${lg.toUpperCase()}</span>${TEXTS[key][lg]}`;
+    }
+
+    const host = $('toks');
+    host.innerHTML = '';
+    for (const lg of LANGS) {
+      const row = document.createElement('div'); row.className = 'lang-row';
+      const badge = document.createElement('span'); badge.className = 'lang-badge';
+      badge.textContent = lg.toUpperCase(); row.appendChild(badge);
+      const box = document.createElement('div'); box.className = 'lang-toks';
+      for (const t of res[lg].toks) {
+        const s = document.createElement('span'); s.className = 'tok';
+        const c = clr(t); s.style.background = c.bg; s.style.color = c.fg;
+        s.textContent = t;
+        const tt = tip(t); if (tt) s.title = tt;
+        box.appendChild(s);
+      }
+      row.appendChild(box);
+      const cnt = document.createElement('span'); cnt.className = 'lang-count';
+      cnt.style.color = lg === 'en' ? '#7ac0f0' : lg === 'ru' ? '#e8a860' : '#b494f4';
+      cnt.textContent = res[lg].n + ' tok';
+      row.appendChild(cnt);
+      host.appendChild(row);
+    }
+
+    const enPct = Math.round(mix * 100), other = Math.round((1 - mix) * 50);
+    $('mixVal').textContent = enPct + '% EN';
+    $('mixLegend').innerHTML = TF('mixNote', enPct, other);
+    $('mix').value = enPct;
+
+    const worst = LANGS.reduce((a, b) => res[a].ratio > res[b].ratio ? a : b);
+    $('cost').innerHTML =
+      `<div class="lbl">${T('costLbl')}</div>
+       <div class="rowline"><span>RU</span><span class="big" style="color:#e8a860">×${res.ru.ratio.toFixed(2)}</span></div>
+       <div class="rowline"><span>TT</span><span class="big" style="color:#b494f4">×${res.tt.ratio.toFixed(2)}</span></div>
+       <div class="lbl" style="margin-top:5px">${T('ctxLbl')}</div>
+       <div class="rowline"><span>${worst.toUpperCase()}</span><span class="big" style="color:#8ba3b8">${
+         TF('ctxOf', Math.round(100 / res[worst].ratio) + '%')}</span></div>`;
+
+    drawBars();
+  }
+
+  function update() { recompute(); render(); }
+
+  /* ── controls ── */
+  $('mix').addEventListener('input', e => { mix = parseFloat(e.target.value) / 100; update(); });
+  $('btnSkew').addEventListener('click', () => { mix = 0.90; update(); });
+  $('btnBal').addEventListener('click', () => { mix = 1 / 3; update(); });
+  document.querySelectorAll('#presets .btn').forEach(b => b.addEventListener('click', () => {
+    Kit.clearActive('#presets .btn'); b.classList.add('active'); key = b.dataset.key; update();
+  }));
+  Kit.onKey({
+    ArrowLeft:  () => { mix = Math.max(0.34, mix - 0.02); update(); },
+    ArrowRight: () => { mix = Math.min(1, mix + 0.02); update(); },
+    Home: () => { mix = 1 / 3; update(); }, End: () => { mix = 1; update(); },
+  });
+
+  recompute();     // state first: initI18n no longer renders, but render() needs res
+  Kit.initI18n(I18N, { onChange: () => { render(); Kit.lockTheoryHeight(); } });
+  Kit.autoLockTheory();
+  render();
+
+  window.__demo = { TEXTS, LANGS, train, encode, measure, shareFor, BALANCED,
+                    mixedFreqs, byteLen, wordBytes, byteTok, MERGES, I18N };
+})();
+</script>
+</body>
+</html>

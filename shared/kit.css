@@ -1,0 +1,142 @@
+/* ── phd-escape-visuals shared kit ──────────────────────────────────────────
+   Extracted after four demos had drifted into four slightly different copies of
+   the same CSS — a divergence that produced real bugs (a theory box sized to the
+   wrong locale, a title translated in two files out of four).
+
+   Rules baked in here, from tmp/KNOWLEDGE-BASE.md:
+     - every text colour clears 4.5:1 on the background (§3.11)
+     - canvas height comes from CSS, never from the width/height attributes,
+       whose ratio otherwise silently drives the layout (§3.10)
+     - below 700px the fixed-aspect "slide" becomes a scrolling column (§6.3)
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --bg:        #080d14;
+  --panel:     rgba(60,130,200,0.03);
+  --line:      rgba(60,130,200,0.1);
+  --text:      #e8ecf0;   /* 15.5:1 */
+  --body:      #b8c8d8;   /* 11.0:1 */
+  --dim:       #8ba3b8;   /*  7.5:1 */
+  --label:     #7088a0;   /*  5.3:1 — floor for anything carrying information */
+  --blue:      #3ba4ff;
+  --teal:      #2ee8a8;
+  --amber:     #ffb84d;   /* text-safe amber; #ff9f1c is for strokes only */
+  --red:       #e88080;
+  --mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; padding: 10px;
+}
+
+.app {
+  width: min(calc(100vh - 20px), calc(100vw - 20px), 760px);
+  aspect-ratio: 1;
+  display: flex; flex-direction: column; gap: 6px;
+  overflow: hidden;
+}
+
+.header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 20px; overflow: hidden; }
+.header h1 { font-size: 14px; font-weight: 700; color: var(--text); }
+.header .tag { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--label); }
+
+.cbox { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+
+/* Height is always set per-canvas in CSS. Setting only the HTML attribute makes
+   the rendered height a function of the default 300px intrinsic width. */
+canvas { display: block; width: 100%; }
+
+/* ── leading question ── */
+.hint-bar { flex-shrink: 0; min-height: 18px; font-size: 10px; line-height: 1.45; color: #9fb4c8; overflow: hidden; }
+.hint-bar b { color: var(--text); font-weight: 600; }
+.hint-bar .q { color: var(--amber); font-weight: 700; margin-right: 5px; }
+
+/* ── buttons ── */
+.btn {
+  background: rgba(60,130,200,0.07); border: 1px solid rgba(60,130,200,0.16);
+  color: var(--dim); font-family: var(--mono); font-size: 9px; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px; cursor: pointer; transition: all 0.15s;
+}
+.btn:hover { color: #cfe0ee; border-color: rgba(59,164,255,0.35); }
+.btn.active { background: rgba(59,164,255,0.16); color: var(--blue); border-color: rgba(59,164,255,0.4); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-row { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+
+/* ── sliders ── */
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; background: rgba(60,130,200,0.2);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--blue); border: 2px solid #0a1018; cursor: pointer;
+  box-shadow: 0 0 8px rgba(59,164,255,0.5);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--blue); border: 2px solid #0a1018; cursor: pointer;
+}
+.ctrl-label { font-size: 9px; font-weight: 600; color: var(--label); text-transform: uppercase; letter-spacing: 1px; }
+.ctrl-val { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--text); }
+
+/* ── theory panel ── */
+.theory { padding: 10px 14px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.lang-sw {
+  display: flex; gap: 2px; margin-bottom: 6px; background: rgba(60,130,200,0.06);
+  border-radius: 6px; padding: 2px; width: fit-content; flex-shrink: 0;
+}
+.lang-btn {
+  background: none; border: none; color: var(--label);
+  font-family: inherit; font-size: 10px; font-weight: 600;
+  padding: 3px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+}
+.lang-btn:hover { color: #b0c8e0; }
+.lang-btn.active { background: rgba(59,164,255,0.15); color: var(--blue); }
+
+.tc { display: none; }
+.tc.active { display: block; }
+.tc h3 { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.tc p { font-size: 11px; line-height: 1.5; color: var(--body); margin-bottom: 4px; }
+.tc p strong { color: var(--text); }
+.tc .fb {
+  background: rgba(60,130,200,0.06); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 10px; margin: 3px 0; text-align: center;
+}
+.tc .fb .katex { font-size: 0.85em; color: var(--text); }
+/* KaTeX tags Cyrillic inside \text{} with .cyrillic_fallback but ships no rule
+   for it — its own fonts have no Cyrillic glyphs, so the browser substitutes
+   something arbitrary. Name the substitute so RU/TT formulas match the UI. */
+.katex .cyrillic_fallback { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.tc .note {
+  font-size: 9.5px; line-height: 1.45; color: var(--amber);
+  border-left: 2px solid rgba(255,159,28,0.5); padding-left: 8px; margin-top: 3px;
+}
+.tc .note strong { color: #ffc966; }
+
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(60,130,200,0.18); border-radius: 2px; }
+
+/* ── responsive ───────────────────────────────────────────────────────────
+   The desktop layout is a fixed-aspect slide; on a phone that yields unusably
+   small canvases and clips the theory panel. `height: auto !important` is load
+   bearing: the height locker writes an inline height that would otherwise
+   reinstate exactly the scroll box this block removes. */
+@media (max-width: 700px) {
+  body { align-items: flex-start; padding: 8px; }
+  .app {
+    width: 100%; aspect-ratio: auto; height: auto;
+    min-height: calc(100vh - 16px); overflow: visible;
+  }
+  .header { height: auto; }
+  .theory { height: auto !important; min-height: auto !important; overflow-y: visible !important; }
+  .tc p { font-size: 12px; }
+  .tc .note { font-size: 11px; }
+  .hint-bar { font-size: 11px; }
+}

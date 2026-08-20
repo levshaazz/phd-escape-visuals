@@ -1,0 +1,1173 @@
+<!-- OUT: Natural Language Processing/tokenizer-zoo.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokenizer Zoo</title>
+<style>
+/*KIT-CSS*/
+  .app {
+    width: min(calc(100vh - 20px), calc(100vw - 20px), 760px);
+    aspect-ratio: 1;
+    display: flex; flex-direction: column; gap: 5px; overflow: hidden;
+  }
+  
+  
+  
+
+  .algo-tabs { display: flex; gap: 2px; flex-shrink: 0; }
+  .algo-tab {
+    flex: 1; text-align: center;
+    background: rgba(60,130,200,0.04); border: 1px solid rgba(60,130,200,0.08);
+    border-radius: 6px 6px 0 0; padding: 4px 0;
+    font-size: 9px; font-weight: 600; color: #8ba3b8;
+    cursor: pointer; transition: all 0.15s; border-bottom: 2px solid transparent;
+  }
+  .algo-tab:hover { color: #7088a0; }
+  .algo-tab.active { color: #3ba4ff; background: rgba(59,164,255,0.06); border-bottom-color: #3ba4ff; }
+  .algo-tab .mt { display: block; font-size: 7px; font-weight: 400; font-family: var(--mono); color: #8296aa; margin-top: 1px; }
+  .algo-tab.active .mt { color: #7ba3c4; }
+
+  .corpus-row { display: flex; gap: 6px; flex-shrink: 0; align-items: stretch; }
+  .corpus-box { flex: 1; padding: 5px 8px; display: flex; flex-direction: column; gap: 3px; }
+  .corpus-box label { font-size: 7px; font-weight: 600; color: #7088a0; text-transform: uppercase; letter-spacing: 1px; min-width: 40px; }
+  .corpus-presets { display: flex; gap: 2px; flex-wrap: wrap; }
+  .corpus-pre {
+    background: rgba(60,130,200,0.06); border: 1px solid rgba(60,130,200,0.1);
+    color: #7088a0; font-family: var(--mono);
+    font-size: 8px; font-weight: 500; padding: 1px 5px; border-radius: 3px;
+    cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .corpus-pre:hover { color: #b0c8e0; }
+  .corpus-pre.active { background: rgba(59,164,255,0.15); color: #3ba4ff; border-color: rgba(59,164,255,0.3); }
+  #corpusInput {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(60,130,200,0.12);
+    border-radius: 4px; padding: 3px 6px; font-family: var(--mono);
+    font-size: 10px; color: #e8ecf0; outline: none; resize: none; height: 36px; line-height: 1.5;
+  }
+  #corpusInput:focus { border-color: rgba(60,130,200,0.3); }
+
+  .stats-box { padding: 5px 10px; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 120px; }
+  .stat-line {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 8px; color: #7088a0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .stat-line span { min-width: 58px; }
+  .stat-line b { font-family: var(--mono); font-size: 13px; font-weight: 700; color: #a0c0e0; }
+
+  .step-bar { padding: 5px 12px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; height: 28px; overflow: hidden; }
+  .step-num { font-family: var(--mono); font-size: 10px; font-weight: 700; white-space: nowrap; flex-shrink: 0; transition: color 0.2s; }
+  .step-num.phase-count { color: #3ba4ff; }
+  .step-num.phase-score { color: #ff9f1c; }
+  .step-num.phase-merge { color: #2ee8a8; }
+  .step-text { font-size: 11px; color: #b8c8d8; line-height: 1.3; }
+  .step-text b { color: #e8ecf0; font-weight: 600; }
+  .step-text code { font-family: var(--mono); background: rgba(60,130,200,0.1); padding: 0 4px; border-radius: 3px; font-size: 10px; }
+
+  .viz-area { padding: 8px 10px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
+  .word-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px 10px; flex: 1;
+    align-content: start;
+  }
+  .word-row { display: flex; align-items: center; gap: 4px; padding: 1px 0; min-width: 0; }
+  .word-label { font-family: var(--mono); font-size: 8px; color: #8296aa; font-weight: 500; width: 50px; max-width: 50px; text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .word-freq { font-family: var(--mono); font-size: 7px; color: #7d93a7; min-width: 16px; text-align: right; flex-shrink: 0; }
+  .word-toks { display: flex; gap: 2px; flex-wrap: wrap; align-items: center; min-width: 0; overflow: hidden; }
+
+  .tok {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 6px; border-radius: 4px;
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    white-space: pre; line-height: 1.2;
+    position: relative; will-change: transform;
+  }
+  .tok[title] { cursor: help; }
+  .tok.merge-l, .tok.merge-r {
+    z-index: 2;
+    box-shadow: 0 0 12px rgba(255,159,28,0.4), inset 0 0 8px rgba(255,159,28,0.1);
+    outline: 2px solid rgba(255,159,28,0.6);
+  }
+  .tok.merge-l { border-radius: 4px 0 0 4px; margin-right: -1px; }
+  .tok.merge-r { border-radius: 0 4px 4px 0; margin-left: -1px; }
+  .tok.merge-lr { border-radius: 4px; outline: 2px solid rgba(255,159,28,0.6); box-shadow: 0 0 12px rgba(255,159,28,0.4); }
+  .merge-bridge {
+    width: 6px; height: 2px; background: rgba(255,159,28,0.5);
+    border-radius: 1px; margin: 0 -3px; z-index: 3;
+    animation: bpulse 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes bpulse { from { background: rgba(255,159,28,0.2); } to { background: rgba(255,159,28,0.7); } }
+  .tok.just-born {
+    animation: tborn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 16px rgba(46,232,168,0.4);
+  }
+  @keyframes tborn { 0% { transform: scale(0.5); opacity: 0.3; filter: brightness(2); } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; filter: brightness(1); } }
+  .tok.tok-unk { background: rgba(255,80,80,0.15); color: #e88080; border: 1px dashed rgba(255,80,80,0.4); }
+  .tok.tok-danger {
+    z-index: 2;
+    box-shadow: 0 0 10px rgba(255,80,80,0.3), inset 0 0 6px rgba(255,80,80,0.1);
+    outline: 2px dashed rgba(255,80,80,0.5);
+    animation: tdanger 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes tdanger { from { outline-color: rgba(255,80,80,0.2); } to { outline-color: rgba(255,80,80,0.6); } }
+
+  /* Viterbi detail */
+  .viterbi-detail {
+    margin-top: 4px; padding: 6px 8px;
+    background: rgba(60,130,200,0.04); border: 1px solid rgba(60,130,200,0.08);
+    border-radius: 6px; flex-shrink: 0;
+  }
+  .vd-title {
+    font-size: 8px; font-weight: 600; color: #7088a0; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .vd-title::before { content: '\25BC'; font-size: 6px; transition: transform 0.2s; display: inline-block; }
+  .vd-title.collapsed::before { transform: rotate(-90deg); }
+  .vd-body { overflow: hidden; transition: max-height 0.25s ease; }
+  .vd-body.collapsed { max-height: 0 !important; }
+  .viterbi-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .viterbi-toks { display: flex; gap: 2px; }
+  .viterbi-score { font-family: var(--mono); font-size: 9px; color: #8ba3b8; margin-left: auto; }
+  .viterbi-row.optimal .viterbi-score { color: #2ee8a8; font-weight: 600; }
+  .viterbi-badge { font-size: 7px; color: #2ee8a8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .vtok { padding: 2px 5px; border-radius: 3px; font-family: var(--mono); font-size: 10px; font-weight: 500; }
+
+  /* Test bar */
+  .test-bar { padding: 5px 10px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; height: 28px; overflow: hidden; }
+  .test-bar label { font-size: 7px; font-weight: 600; color: #7088a0; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; min-width: 52px; }
+  .test-hint { font-size: 7px; color: #7f95a9; font-style: italic; flex-shrink: 0; }
+  #testInput {
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(60,130,200,0.12);
+    border-radius: 4px; padding: 2px 6px; font-family: var(--mono);
+    font-size: 10px; color: #e8ecf0; outline: none; width: 100px;
+  }
+  #testInput:focus { border-color: rgba(60,130,200,0.3); }
+  .test-result { display: flex; gap: 3px; flex-wrap: wrap; flex: 1; align-items: center; }
+  .test-arrow { color: #8ba3b8; font-size: 10px; flex-shrink: 0; }
+
+  /* Compare mode */
+  .cmp-row {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+    border-bottom: 1px solid rgba(60,130,200,0.04); border-left: 3px solid transparent;
+    padding-left: 6px; transition: border-color 0.2s;
+  }
+  .cmp-row:last-child { border-bottom: none; }
+  .cmp-row.cmp-best { border-left-color: rgba(46,232,168,0.5); }
+  .cmp-row.cmp-worst { border-left-color: rgba(255,159,28,0.5); }
+  .cmp-row.cmp-lossy { border-left-color: rgba(255,80,80,0.55); }
+  .cmp-stats.cmp-lossy-stat { color: #e88080; }
+  .cmp-label { font-size: 9px; font-weight: 600; color: #7088a0; min-width: 75px; flex-shrink: 0; }
+  .cmp-label .cmp-model { font-size: 7px; font-weight: 400; color: #7f95a9; font-family: var(--mono); }
+  .cmp-toks { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
+  .cmp-stats { font-family: var(--mono); font-size: 9px; color: #8ba3b8; flex-shrink: 0; min-width: 40px; text-align: right; }
+  .cmp-stats.cmp-best-stat { color: #2ee8a8; }
+  .cmp-stats.cmp-worst-stat { color: #ff9f1c; }
+  .cmp-input-row { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid rgba(60,130,200,0.08); }
+  .cmp-input-row label { font-size: 8px; font-weight: 600; color: #7088a0; text-transform: uppercase; letter-spacing: 1px; }
+  #cmpInput {
+    flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(60,130,200,0.12);
+    border-radius: 4px; padding: 3px 8px; font-family: var(--mono);
+    font-size: 11px; color: #e8ecf0; outline: none;
+  }
+  .cmp-note { font-size: 8px; color: #8ba3b8; line-height: 1.35; padding: 4px 6px; margin-top: 2px; border-top: 1px solid rgba(60,130,200,0.06); }
+  .cmp-note strong { color: #7088a0; }
+
+  .controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; height: 28px; overflow: hidden; }
+  .ctrl-btn {
+    background: rgba(60,130,200,0.06); border: 1px solid rgba(60,130,200,0.1);
+    color: #7088a0; font-family: var(--mono);
+    font-size: 10px; font-weight: 600; padding: 3px 6px; border-radius: 4px;
+    cursor: pointer; transition: all 0.15s; height: 24px; display: flex; align-items: center;
+  }
+  .ctrl-btn:hover { color: #b0c8e0; }
+  .ctrl-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .ctrl-btn.play { background: rgba(59,164,255,0.12); border-color: rgba(59,164,255,0.2); color: #3ba4ff; padding: 3px 10px; min-width: 36px; justify-content: center; }
+  .ctrl-btn.play:hover { background: rgba(59,164,255,0.2); }
+  .step-slider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 4px; background: rgba(60,130,200,0.15); border-radius: 2px; outline: none; cursor: pointer;
+  }
+  .step-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+    background: #3ba4ff; border: 2px solid #0a1018; cursor: pointer;
+    box-shadow: 0 0 6px rgba(59,164,255,0.4);
+  }
+  .speed-btns { display: flex; gap: 1px; margin-left: 2px; }
+  .spd {
+    background: none; border: 1px solid rgba(60,130,200,0.08);
+    color: #7e98ad; font-family: var(--mono);
+    font-size: 8px; font-weight: 600; padding: 2px 5px; border-radius: 3px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .spd:hover { color: #7088a0; }
+  .spd.active { color: #3ba4ff; border-color: rgba(59,164,255,0.3); background: rgba(59,164,255,0.08); }
+  .step-counter { font-family: var(--mono); font-size: 9px; color: #8ba3b8; white-space: nowrap; }
+  .step-counter b { color: #a0c0e0; }
+
+  .theory { padding: 7px 12px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .lang-sw { display: flex; gap: 2px; margin-bottom: 4px; background: rgba(60,130,200,0.06); border-radius: 6px; padding: 2px; width: fit-content; flex-shrink: 0; }
+  
+  
+  
+  
+  
+  .tc h3 { font-size: 11px; font-weight: 700; color: #e8ecf0; margin-bottom: 3px; }
+  .tc p { font-size: 10px; line-height: 1.4; color: #b8c8d8; margin-bottom: 3px; }
+  
+  
+  
+  
+  
+  
+  ::-webkit-scrollbar-thumb { background: rgba(60,130,200,0.12); border-radius: 2px; }
+
+  .corpus-rel { position: relative; }
+  .char-count { position: absolute; right: 6px; bottom: 3px; font-family: var(--mono); font-size: 8px; color: #8296aa; pointer-events: none; }
+  .empty-msg { display: flex; align-items: center; justify-content: center; height: 100%; color: #8ba3b8; font-size: 12px; font-style: italic; }
+
+  /* ── Responsive: below 700px the square layout stops working ──
+     The desktop layout is a fixed-aspect "slide"; on a phone that produces
+     unusably small canvases and clips the theory panel. Here the app becomes a
+     normal scrolling column instead. */
+  
+
+  @media (max-width: 700px) {
+    .word-grid { grid-template-columns: 1fr; }
+    .corpus-row { flex-direction: column; }
+    .stats-box { flex-direction: row; justify-content: space-around; min-width: 0; }
+    .algo-tab { font-size: 8px; padding: 5px 0; }
+    .test-bar, .controls, .step-bar { height: auto; flex-wrap: wrap; padding: 6px 10px; }
+    .viz-area { min-height: 200px; overflow-y: auto; }
+    .cmp-row { flex-wrap: wrap; }
+    .header { height: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Tokenizer Zoo</h1>
+    <span class="tag" id="introText">Natural Language Processing</span>
+  </div>
+  <div class="algo-tabs" id="algoTabs">
+    <div class="algo-tab active" data-algo="bpe">BPE<span class="mt">GPT-2</span></div>
+    <div class="algo-tab" data-algo="wordpiece">WordPiece<span class="mt">BERT</span></div>
+    <div class="algo-tab" data-algo="unigram">Unigram<span class="mt">T5</span></div>
+    <div class="algo-tab" data-algo="bytebpe">Byte BPE<span class="mt">GPT-4</span></div>
+    <div class="algo-tab" data-algo="compare"><span data-i18n="tabCompare">Compare</span><span class="mt" data-i18n="tabAll">all</span></div>
+  </div>
+  <div class="corpus-row">
+    <div class="cbox corpus-box">
+      <div style="display:flex;align-items:center;gap:6px">
+        <label id="corpusLabel">Corpus</label>
+        <div class="corpus-presets" id="corpusPresets">
+          <button class="corpus-pre active" data-key="hug" data-i18n="cpHug" title="Shared stems (hug/bug/mug) &mdash; shows how BPE discovers morphology">hugs</button>
+          <button class="corpus-pre" data-key="morph" data-i18n="cpMorph" title="Rich prefixes &amp; suffixes (re-, -ing, -ed, -er) &mdash; stress-tests morphological splitting">morph</button>
+          <button class="corpus-pre" data-key="classic" data-i18n="cpClassic" title="The classic low/new/wide example from Jurafsky &amp; Martin, Speech and Language Processing">classic</button>
+          <button class="corpus-pre" data-key="natural" data-i18n="cpNatural" title="Natural language with repeated function words &mdash; shows word-frequency effects">natural</button>
+          <button class="corpus-pre" data-key="multi" data-i18n="cpMulti" title="Non-ASCII: caf&eacute;, &uuml;ber, &#29483;, &#1082;&#1086;&#1090; &mdash; best for Byte BPE to see UTF-8 bytes">multilingual</button>
+        </div>
+      </div>
+      <div class="corpus-rel">
+        <textarea id="corpusInput" spellcheck="false" maxlength="120">hug hugs hugger hugging bug bugs bugger bugging mug mugs mugger mugging</textarea>
+        <span id="charCount" class="char-count">0/120</span>
+      </div>
+    </div>
+    <div class="cbox stats-box" id="statsBox">
+      <div class="stat-line"><span id="statLabel1">Vocab</span><b id="statVocab">0</b></div>
+      <div class="stat-line"><span id="statLabelToks">Total toks</span><b id="statToks">0</b></div>
+      <div class="stat-line"><span id="statLabel3">Merges</span><b id="statMerges">0</b></div>
+    </div>
+  </div>
+  <div class="cbox step-bar" id="stepBar">
+    <span class="step-num phase-count" id="stepNum">0</span>
+    <span class="step-text" id="stepText">Initializing...</span>
+  </div>
+  <div class="cbox viz-area" id="vizArea"></div>
+  <div class="cbox test-bar" id="testBar">
+    <label id="testLabel">Try a word</label>
+    <input type="text" id="testInput" value="mugging" spellcheck="false" autocomplete="off">
+    <span class="test-arrow">&rarr;</span>
+    <div class="test-result" id="testResult"></div>
+    <span class="test-hint" id="testHint"></span>
+  </div>
+  <div class="controls" id="controlsRow">
+    <button class="ctrl-btn" id="btnFirst" title="Home">|&#171;</button>
+    <button class="ctrl-btn" id="btnPrev" title="&larr;">&#171;</button>
+    <button class="ctrl-btn play" id="btnPlay" title="Space">&#9654;</button>
+    <button class="ctrl-btn" id="btnNext" title="&rarr;">&#187;</button>
+    <button class="ctrl-btn" id="btnLast" title="End">&#187;|</button>
+    <input type="range" class="step-slider" id="stepSlider" min="0" max="1" value="0">
+    <span class="step-counter"><b id="stepCur">0</b>/<span id="stepMax">0</span></span>
+    <div class="speed-btns">
+      <button class="spd" data-ms="1800">.5x</button>
+      <button class="spd active" data-ms="900">1x</button>
+      <button class="spd" data-ms="450">2x</button>
+      <button class="spd" data-ms="180">4x</button>
+    </div>
+  </div>
+  <div class="cbox theory">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+    <!-- BPE -->
+    <div class="tc" data-tab="bpe" data-lang="en">
+      <h3>Byte Pair Encoding (BPE)</h3>
+      <p>Start from characters + end-of-word marker <strong>&lt;/w&gt;</strong>. It distinguishes word-final vs. word-internal positions (e.g., <em>"er"</em> in <em>"hugger"</em> vs. <em>"error"</em>) and enables correct detokenization. Iteratively merge the <strong>most frequent adjacent pair</strong>.</p>
+      <div class="fb" data-formula="bpe"><span class="k-block">\mathrm{pair}^* = \arg\max_{(a,b)} \;\mathrm{freq}(a,b)</span></div>
+      <p class="note"><strong>Inference:</strong> apply learned merges in order. A word is split into characters, then each merge rule is applied left-to-right. The order matters &mdash; earlier merges get priority.</p>
+    </div>
+    <div class="tc" data-tab="bpe" data-lang="ru">
+      <h3>Byte Pair Encoding (BPE)</h3>
+      <p>Начинаем с символов + маркер конца слова <strong>&lt;/w&gt;</strong>. Он отличает конечные позиции от внутренних (напр., <em>"er"</em> в <em>"hugger"</em> vs. <em>"error"</em>) и обеспечивает корректную детокенизацию. Итеративно объединяем <strong>самую частую соседнюю пару</strong>.</p>
+      <div class="fb" data-formula="bpe"><span class="k-block">\mathrm{pair}^* = \arg\max_{(a,b)} \;\mathrm{freq}(a,b)</span></div>
+      <p class="note"><strong>Применение:</strong> применяем выученные слияния по порядку. Слово разбивается на символы, затем каждое правило слияния применяется слева направо. Порядок важен &mdash; ранние слияния приоритетнее.</p>
+    </div>
+    <div class="tc" data-tab="bpe" data-lang="tt">
+      <h3>Byte Pair Encoding (BPE)</h3>
+      <p>Хәрефләрдән + сүз ахыры билгесе <strong>&lt;/w&gt;</strong> башлыйбыз. Ул сүз ахырын эчке позициядән аера (мәс., <em>"er"</em>: <em>"hugger"</em> vs. <em>"error"</em>) һәм дөрес детокенизацияне тәэмин итә. <strong>Иң еш очраган күрше парны</strong> итератив берләштерәбез.</p>
+      <div class="fb" data-formula="bpe"><span class="k-block">\mathrm{pair}^* = \arg\max_{(a,b)} \;\mathrm{freq}(a,b)</span></div>
+      <p class="note"><strong>Инференс:</strong> өйрәнелгән берләшүләрне тәртип буенча кулланабыз. Сүз символларга бүленә, аннары һәр берләшү кагыйдәсе сулдан уңга кулланыла. Тәртип мөһим — иртәрәк берләшүләр өстенлекле.</p>
+    </div>
+    <!-- WordPiece -->
+    <div class="tc" data-tab="wordpiece" data-lang="en">
+      <h3>WordPiece</h3>
+      <p>Like BPE, but merges maximize <strong>pointwise mutual information (PMI)</strong>: favors rare tokens that co-occur often. The <strong>##</strong> prefix marks continuations &mdash; same role as <em>&lt;/w&gt;</em> but from the other side: it tells the model where a word does <em>not</em> begin.</p>
+      <div class="fb" data-formula="wordpiece"><span class="k-block">\mathrm{score}(a,b) = \frac{\mathrm{freq}(ab)}{\mathrm{freq}(a) \cdot \mathrm{freq}(b)}</span></div>
+      <p class="note"><strong>Inference:</strong> greedy longest-match from vocab. Start at the beginning of the word, find the longest token in vocab, consume it, repeat. Unknown chars become <code>[UNK]</code>.</p>
+    </div>
+    <div class="tc" data-tab="wordpiece" data-lang="ru">
+      <h3>WordPiece</h3>
+      <p>Как BPE, но слияния максимизируют <strong>поточечную взаимную информацию (PMI)</strong>: предпочтение отдаётся редким, но часто соседствующим токенам. У префикса <strong>##</strong> та же роль, что у <em>&lt;/w&gt;</em>, но с другой стороны: он показывает, где слово <em>не</em> начинается.</p>
+      <div class="fb" data-formula="wordpiece"><span class="k-block">\mathrm{score}(a,b) = \frac{\mathrm{freq}(ab)}{\mathrm{freq}(a) \cdot \mathrm{freq}(b)}</span></div>
+      <p class="note"><strong>Применение:</strong> жадный поиск самого длинного совпадения со словарём. Идём от начала слова, находим самый длинный токен словаря, откусываем его, повторяем. Неизвестные символы &rarr; <code>[UNK]</code>.</p>
+    </div>
+    <div class="tc" data-tab="wordpiece" data-lang="tt">
+      <h3>WordPiece</h3>
+      <p>BPE кебек, ләкин берләшүләр <strong>ноктавый үзара мәгълүматны (PMI)</strong> максимальләштерә: сирәк, ләкин еш бергә очраган токеннарга өстенлек. <strong>##</strong> префиксы &mdash; <em>&lt;/w&gt;</em> белән бер үк роль, ләкин каршы яктан: сүз кайда <em>башланмаганын</em> күрсәтә.</p>
+      <div class="fb" data-formula="wordpiece"><span class="k-block">\mathrm{score}(a,b) = \frac{\mathrm{freq}(ab)}{\mathrm{freq}(a) \cdot \mathrm{freq}(b)}</span></div>
+      <p class="note"><strong>Инференс:</strong> сүзлектән иң озын туры килүне эзләү. Сүз башыннан башлап, сүзлектәге иң озын туры килгән токенны табабыз, кулланабыз, кабатлыйбыз. Билгесез символлар &rarr; <code>[UNK]</code>.</p>
+    </div>
+    <!-- Unigram -->
+    <div class="tc" data-tab="unigram" data-lang="en">
+      <h3>Unigram Language Model</h3>
+      <p>Opposite of BPE: start with a <strong>huge vocab</strong> (all substrings up to length 8), iteratively <strong>prune</strong> pieces whose removal hurts corpus likelihood least. Segmentation via <strong>Viterbi</strong> &mdash; dynamic programming that finds the highest-probability left-to-right path through all possible splits.</p>
+      <div class="fb" data-formula="unigram"><span class="k-block">x^* = \arg\max_{x \in S(w)} \sum_{i=1}^{|x|} \log P(x_i)</span></div>
+      <p class="note"><strong>Note:</strong> simplified version (real SentencePiece uses EM for <span class="k">P(x_i)</span>). <strong>Inference:</strong> Viterbi on final vocab &mdash; same DP as during training.</p>
+    </div>
+    <div class="tc" data-tab="unigram" data-lang="ru">
+      <h3>Unigram Language Model</h3>
+      <p>Противоположность BPE: начинаем с <strong>огромного словаря</strong> (все подстроки длиной до 8), итеративно <strong>отсекаем</strong> элементы, чьё удаление меньше всего вредит правдоподобию корпуса. Сегментация по <strong>Витерби</strong> &mdash; динамическое программирование, находящее путь максимальной вероятности слева направо.</p>
+      <div class="fb" data-formula="unigram"><span class="k-block">x^* = \arg\max_{x \in S(w)} \sum_{i=1}^{|x|} \log P(x_i)</span></div>
+      <p class="note"><strong>Примечание:</strong> упрощённая версия (настоящий SentencePiece использует EM для <span class="k">P(x_i)</span>). <strong>Применение:</strong> Витерби на финальном словаре &mdash; та же DP, что и при обучении.</p>
+    </div>
+    <div class="tc" data-tab="unigram" data-lang="tt">
+      <h3>Unigram Language Model</h3>
+      <p>BPE га каршы: <strong>зур сүзлектән</strong> (озынлыгы 8 гә кадәр барлык подстрокалар) башлап, юкка чыгаруы иң аз зыян китерүче кисәкләрне <strong>кисеп ташлыйбыз</strong>. Сегментация <strong>Витерби</strong> аша &mdash; сулдан уңга иң югары ихтималлыклы юлны табучы динамик программалаштыру.</p>
+      <div class="fb" data-formula="unigram"><span class="k-block">x^* = \arg\max_{x \in S(w)} \sum_{i=1}^{|x|} \log P(x_i)</span></div>
+      <p class="note"><strong>Искәрмә:</strong> гадиләштерелгән версия (чын SentencePiece <span class="k">P(x_i)</span> өчен EM куллана). <strong>Инференс:</strong> финаль сүзлектә Витерби &mdash; өйрәтүдәге DP белән бер үк.</p>
+    </div>
+    <!-- Byte BPE -->
+    <div class="tc" data-tab="bytebpe" data-lang="en">
+      <h3>Byte-Level BPE</h3>
+      <p>Same BPE on <strong>raw UTF-8 bytes</strong>. Base vocab = 256 (all possible byte values). Any language/script, no pre-tokenization needed. The space before a word is kept as <code>Ġ</code> (GPT-2's convention) so word boundaries survive and the text can be detokenized. Hover over any token containing <code>&lt;c3&gt;</code>-style bytes to see what they decode to.</p>
+      <div class="fb" data-formula="bytebpe"><span class="k-block">|\mathcal{V}_0| = 256 \quad(\text{all possible byte values})</span></div>
+      <p class="note"><strong>Trade-off:</strong> universality at the cost of longer sequences for non-ASCII. <em>caf&eacute;</em> &rarr; 5 bytes; <em>&#29483;</em> &rarr; 3 bytes. <strong>Inference:</strong> same as BPE &mdash; apply merges in order, but on bytes.</p>
+    </div>
+    <div class="tc" data-tab="bytebpe" data-lang="ru">
+      <h3>Byte-Level BPE</h3>
+      <p>Тот же BPE прямо на <strong>байтах UTF-8</strong>. Базовый словарь = 256 (все возможные значения байтов). Любой язык, без предобработки. Пробел перед словом сохраняется как <code>Ġ</code> (соглашение GPT-2) — границы слов не теряются и текст можно детокенизировать. Наведите на любой токен с байтами вида <code>&lt;c3&gt;</code>, чтобы увидеть, во что они декодируются.</p>
+      <div class="fb" data-formula="bytebpe"><span class="k-block">|\mathcal{V}_0| = 256 \quad(\text{все возможные значения байтов})</span></div>
+      <p class="note"><strong>Компромисс:</strong> универсальность за счёт длинных последовательностей для не-ASCII. <em>caf&eacute;</em> &rarr; 5 байт; <em>&#29483;</em> &rarr; 3 байта. <strong>Применение:</strong> как BPE &mdash; слияния по порядку, но на байтах.</p>
+    </div>
+    <div class="tc" data-tab="bytebpe" data-lang="tt">
+      <h3>Byte-Level BPE</h3>
+      <p>Шул ук BPE <strong>чимал UTF-8 байтларында</strong>. Нигез сүзлек = 256 (барлык мөмкин байт кыйммәтләре). Теләсә нинди тел, алдан эшкәртүсез. Сүз алдындагы буш урын <code>Ġ</code> итеп саклана (GPT-2 килешүе) — сүз чикләре югалмый һәм текстны кире торгызып була. <code>&lt;c3&gt;</code> кебек байтлы теләсә кайсы токенга күрсәтеп, аларның нәрсәгә декодлануын күрегез.</p>
+      <div class="fb" data-formula="bytebpe"><span class="k-block">|\mathcal{V}_0| = 256 \quad(\text{барлык мөмкин байт кыйммәтләре})</span></div>
+      <p class="note"><strong>Компромисс:</strong> универсальлек өчен ASCII-дан тыш билгеләрдә эзлеклелек озынрак була. <em>caf&eacute;</em> &rarr; 5 байт; <em>&#29483;</em> &rarr; 3 байт. <strong>Инференс:</strong> BPE кебек &mdash; берләшүләрне тәртип буенча, ләкин байтларда.</p>
+    </div>
+    <!-- Compare -->
+    <div class="tc" data-tab="compare" data-lang="en"><h3>Comparison</h3><p>All 4 tokenizers trained on the <strong>same corpus</strong>, tokenizing the <strong>same input</strong>. <span style="color:#2ee8a8">Green</span> = fewest tokens (most efficient), <span style="color:#ff9f1c">amber</span> = most tokens.</p><div class="fb"><span class="k-block">\text{BPE} \quad \text{WordPiece} \quad \text{Unigram} \quad \text{Byte BPE}</span></div><p class="note"><strong>Key difference:</strong> BPE uses frequency, WordPiece uses PMI, Unigram uses probabilistic pruning, Byte BPE operates on raw bytes.</p></div>
+    <div class="tc" data-tab="compare" data-lang="ru"><h3>Сравнение</h3><p>Все 4 токенизатора обучены на <strong>одном и том же корпусе</strong> и токенизируют <strong>один и тот же вход</strong>. <span style="color:#2ee8a8">Зелёный</span> = меньше токенов (эффективнее), <span style="color:#ff9f1c">янтарный</span> = больше токенов.</p><div class="fb"><span class="k-block">\text{BPE} \quad \text{WordPiece} \quad \text{Unigram} \quad \text{Byte BPE}</span></div><p class="note"><strong>Ключевое отличие:</strong> BPE использует частоту, WordPiece &mdash; PMI, Unigram &mdash; вероятностное отсечение, Byte BPE работает прямо на байтах.</p></div>
+    <div class="tc" data-tab="compare" data-lang="tt"><h3>Чагыштыру</h3><p>Барлык 4 токенизатор <strong>бер корпуста</strong> өйрәтелгән, <strong>бер кертүне</strong> токенлаштыра. <span style="color:#2ee8a8">Яшел</span> = аз токен (эффективрак), <span style="color:#ff9f1c">янтарь</span> = күбрәк токен.</p><div class="fb"><span class="k-block">\text{BPE} \quad \text{WordPiece} \quad \text{Unigram} \quad \text{Byte BPE}</span></div><p class="note"><strong>Төп аерма:</strong> BPE ешлык куллана, WordPiece &mdash; PMI, Unigram &mdash; ихтималлык белән кисү, Byte BPE чимал байтларда эшли.</p></div>
+  </div>
+</div>
+
+<script>
+/*KIT-JS*/
+</script>
+<script>
+(() => {
+  'use strict';
+  // ── KaTeX ──
+
+  // ── Helpers ──
+  const PAL = [
+    {bg:'rgba(99,179,237,0.20)',fg:'#7ac0f0'},{bg:'rgba(154,230,180,0.20)',fg:'#8ad4a0'},
+    {bg:'rgba(246,173,85,0.20)',fg:'#e8a860'},{bg:'rgba(252,129,129,0.20)',fg:'#e88080'},
+    {bg:'rgba(183,148,244,0.20)',fg:'#b494f4'},{bg:'rgba(129,230,217,0.20)',fg:'#80d8cc'},
+    {bg:'rgba(252,163,204,0.20)',fg:'#e89cc0'},{bg:'rgba(160,190,230,0.20)',fg:'#a0bee6'},
+    {bg:'rgba(200,160,120,0.20)',fg:'#c8a078'},{bg:'rgba(120,220,160,0.20)',fg:'#78dca0'},
+    {bg:'rgba(220,140,220,0.20)',fg:'#dc8cdc'},{bg:'rgba(246,224,94,0.20)',fg:'#d0c060'},
+  ];
+  function hash(s){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return h>>>0;}
+
+  /* Split a token into the atomic units it was built from: characters, or
+     <xx> byte escapes for the byte-level tokenizer. Used both for colouring and
+     for the FLIP animation key. */
+  /* Must be ADDITIVE: units(a) + units(b) === units(a+b). The FLIP key is a
+     running unit offset, so a non-additive count hands two tokens the same key
+     and they animate from each other's position. The earlier version special-cased
+     a bare "</w>" but then split a MERGED "g</w>" into five characters. */
+  function tokUnits(t){
+    const s=t.startsWith('##')?t.slice(2):t;
+    const u=s.match(/<\/w>|\[UNK\]|<[0-9a-f]{2}>|[\s\S]/g);
+    return (u&&u.length)?u:[t];   // a bare "##" still occupies one slot
+  }
+
+  /* Colour by the FIRST unit, so a merged piece keeps the colour of its left
+     operand. Hashing the whole token string gave "hu" and "hug" unrelated
+     colours, which quietly destroyed the "watch the pieces fuse" narrative. */
+  function clr(s){const u=tokUnits(s);return PAL[hash(u.length?u[0]:s)%PAL.length];}
+  function esc(s){return s.replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function parseCorpus(t){const f={};t.trim().split(/\s+/).forEach(w=>{if(w)f[w]=(f[w]||0)+1;});return Object.entries(f).sort((a,b)=>b[1]-a[1]);}
+
+  const { $, clearActive, T, TF } = Kit;
+  function makeSpacer(){const sp=document.createElement('span');sp.style.cssText='width:6px;display:inline-block';return sp;}
+  function countPairs(st){const pc={};st.forEach(([,freq,toks])=>{for(let i=0;i<toks.length-1;i++){const k=toks[i]+'\t'+toks[i+1];pc[k]=(pc[k]||0)+freq;}});return pc;}
+  function applyMerge(st,a,b,merged){return st.map(([w,f,toks])=>{const nt=[];let i=0;while(i<toks.length){if(i<toks.length-1&&toks[i]===a&&toks[i+1]===b){nt.push(merged);i+=2;}else{nt.push(toks[i]);i++;}}return[w,f,nt];});}
+
+  const MAX_MERGES = 20;
+  /* Longest piece Unigram may keep. It was 5 while BPE could merge without limit,
+     so on longer words BPE returned one token and Unigram four — the Compare tab
+     then blamed the algorithm for a cap the demo had imposed on it. */
+  const UNI_MAX_PIECE = 8;
+  /* Unigram must get the SAME vocabulary budget as BPE, otherwise the Compare
+     tab measures the budget instead of the algorithm: with a hard target of 12
+     the pruner ate every multi-character piece and Unigram was permanently
+     flagged "worst". BPE ends with (unique chars + </w>) + MAX_MERGES entries. */
+  function unigramTarget(text){
+    const chars=new Set();
+    for(const w of text.trim().split(/\s+/))for(const ch of w)chars.add(ch);
+    return chars.size+1+MAX_MERGES;
+  }
+
+  const CORPORA = {
+    hug:'hug hugs hugger hugging bug bugs bugger bugging mug mugs mugger mugging',
+    morph:'playing played player plays replay replaying displayed displaying display',
+    classic:'low low low low low lowest lowest newer newer newer newer newer newer wider wider wider new new',
+    natural:'the cat sat on the mat the cat ate the rat the rat ran from the cat',
+    multi:'caf\u00e9 caf\u00e9 r\u00e9sum\u00e9 na\u00efve \u00fcber \u00fcber Katze Katze \u732b \u732b \u043a\u043e\u0442 \u043a\u043e\u0442',
+  };
+
+  // ── i18n system ──
+  const I18N={
+    // BPE steps
+    bpe_count:{en:(n,t)=>`<b>Count characters.</b> Found <b>${n}</b> unique + <code>&lt;/w&gt;</code> marker. Top: ${t}`,ru:(n,t)=>`<b>Подсчёт символов.</b> Найдено <b>${n}</b> уникальных + маркер <code>&lt;/w&gt;</code>. Чаще всего: ${t}`,tt:(n,t)=>`<b>Символларны санау.</b> <b>${n}</b> уникаль + <code>&lt;/w&gt;</code> билгесе табылды. Иң еш: ${t}`},
+    bpe_pair:{en:(t)=>`<b>Find most frequent pair.</b> Top: ${t}`,ru:(t)=>`<b>Поиск самой частой пары.</b> Чаще всего: ${t}`,tt:(t)=>`<b>Иң еш парны табу.</b> Иң еш: ${t}`},
+    bpe_merge:{en:(n,a,b,m)=>`<b>Merge #${n}:</b> <code>${a}</code> + <code>${b}</code> &rarr; <code>${m}</code>`,ru:(n,a,b,m)=>`<b>Слияние #${n}:</b> <code>${a}</code> + <code>${b}</code> &rarr; <code>${m}</code>`,tt:(n,a,b,m)=>`<b>Берләшү #${n}:</b> <code>${a}</code> + <code>${b}</code> &rarr; <code>${m}</code>`},
+    // WordPiece steps
+    wp_split:{en:(n)=>`<b>Split:</b> first char as-is, continuations get <b>##</b>. Vocab: <b>${n}</b>`,ru:(n)=>`<b>Разбивка:</b> первый символ как есть, продолжения получают <b>##</b>. Словарь: <b>${n}</b>`,tt:(n)=>`<b>Бүлү:</b> беренче хәреф үзе, дәвамнар <b>##</b> ала. Сүзлек: <b>${n}</b>`},
+    wp_score:{en:(t)=>`<b>Score pairs (PMI).</b> Top: ${t}`,ru:(t)=>`<b>Оценка пар (PMI).</b> Наибольший PMI: ${t}`,tt:(t)=>`<b>Парларны бәяләү (PMI).</b> Иң югары: ${t}`},
+    // Unigram steps
+    uni_build:{en:(n)=>`<b>Build initial vocab</b> from all substrings (len 1-8). Size: <b>${n}</b>`,ru:(n)=>`<b>Начальный словарь</b> из всех подстрок (длина 1-8). Размер: <b>${n}</b>`,tt:(n)=>`<b>Башлангыч сүзлек</b> барлык подстрокалардан (озынлык 1-8). Күләме: <b>${n}</b>`},
+    uni_score:{en:(i,t)=>`<b>Iter ${i}:</b> cheapest to remove (lowest \u0394loss): ${t}`,ru:(i,t)=>`<b>Итерация ${i}:</b> самые дешёвые для удаления (мин. \u0394loss): ${t}`,tt:(i,t)=>`<b>Итерация ${i}:</b> юкка чыгаруга иң арзан (мин. \u0394loss): ${t}`},
+    uni_prune:{en:(rm,n)=>`<b>Pruned ${rm}.</b> Vocab: <b>${n}</b>. Re-segmented via Viterbi.`,ru:(rm,n)=>`<b>Отсечено ${rm}.</b> Словарь: <b>${n}</b>. Пересегментация по Витерби.`,tt:(rm,n)=>`<b>${rm} киселде.</b> Сүзлек: <b>${n}</b>. Витерби аша яңадан сегментлау.`},
+    // Byte BPE steps
+    byte_enc:{en:(n)=>`<b>Encode as UTF-8 bytes.</b> Base vocab: <b>256</b>. Active here: ${n} unique bytes.`,ru:(n)=>`<b>Кодирование в UTF-8 байты.</b> Базовый словарь: <b>256</b>. Здесь активны: ${n} уник. байтов.`,tt:(n)=>`<b>UTF-8 байтларга кодлау.</b> Нигез сүзлек: <b>256</b>. Монда актив: ${n} уникаль байт.`},
+    byte_pair:{en:(t)=>`<b>Top byte-pairs:</b> ${t}`,ru:(t)=>`<b>Самые частые байт-пары:</b> ${t}`,tt:(t)=>`<b>Иң еш байт-парлар:</b> ${t}`},
+    // Static UI
+    tryWord:{en:'Try a word',ru:'Проверить',tt:'Сүзне сына'},
+    corpus:{en:'Corpus',ru:'Корпус',tt:'Корпус'},
+    vocab:{en:'Vocab',ru:'Словарь',tt:'Сүзлек'},
+    totalToks:{en:'Total toks',ru:'Всего ток.',tt:'Барлык ток.'},
+    merges:{en:'Merges',ru:'Слияния',tt:'Берләшүләр'},
+    pruned:{en:'Pruned',ru:'Отсечено',tt:'Киселгән'},
+    hint_bpe:{en:'merges in order',ru:'слияния по порядку',tt:'берләшүләр тәртип б-ча'},
+    hint_wp:{en:'longest match',ru:'самое длинное совпадение',tt:'иң озын туры килү'},
+    hint_uni:{en:'Viterbi DP',ru:'ДП Витерби',tt:'Витерби ДП'},
+    hint_byte:{en:'byte merges',ru:'байт-слияния',tt:'байт-берләшүләр'},
+    viterbi:{en:(w)=>`Viterbi segmentations for \u201c${w}\u201d`,ru:(w)=>`Сегментации Витерби для \u201c${w}\u201d`,tt:(w)=>`\u201c${w}\u201d \u04e9чен Витерби сегментациясе`},
+    optimal:{en:'optimal',ru:'оптим.',tt:'оптималь'},
+    noCorpus:{en:'<b>No corpus.</b> Type or select a preset above.',ru:'<b>Нет корпуса.</b> Введите текст или выберите готовый корпус.',tt:'<b>Корпус юк.</b> Текст языгыз яки пресет сайлагыз.'},
+    enterCorpus:{en:'Enter a corpus to begin training.',ru:'Введите корпус для начала обучения.',tt:'Өйрәтүне башлау өчен корпус кертегез.'},
+    enterCompare:{en:'Enter a corpus to compare.',ru:'Введите корпус для сравнения.',tt:'Чагыштыру өчен корпус кертегез.'},
+    cmpLabel:{en:'Test input',ru:'Тестовый ввод',tt:'Тест кертү'},
+    tip_hug:{en:'Shared stems (hug/bug/mug)',ru:'Общие основы (hug/bug/mug)',tt:'Уртак нигезләр (hug/bug/mug)'},
+    tip_morph:{en:'Rich prefixes & suffixes',ru:'Богатая морфология',tt:'Бай морфология'},
+    tip_classic:{en:'Classic example from Jurafsky & Martin (SLP)',ru:'Классический пример из учебника Jurafsky & Martin (SLP)',tt:'Jurafsky & Martin (SLP) дәреслегеннән классик мисал'},
+    tip_natural:{en:'Natural language, word frequency',ru:'Естественный язык: эффект частотности',tt:'Табигый тел, ешлык'},
+    tip_multi:{en:'Non-ASCII: best for Byte BPE',ru:'Не-ASCII: лучше всего для Byte BPE',tt:'ASCII-дан тыш: Byte BPE өчен иң яхшы'},
+    intro:{en:'Natural Language Processing',ru:'Обработка естественного языка',tt:'Табигый телне эшкәртү'},
+    cmpNote:{en:'<strong>Why they differ:</strong> BPE picks the globally most frequent pair. WordPiece prefers statistically surprising pairs (PMI). Unigram keeps pieces that maximize total log-likelihood. Byte BPE works on raw bytes, so non-ASCII costs extra tokens. <strong>Fair comparison:</strong> all four get the <em>same vocabulary budget</em>, and both BPE variants carry a word-boundary marker (<code>&lt;/w&gt;</code>, <code>Ġ</code>). A row marked ⚠ emitted <code>[UNK]</code> — it lost the input, so it is not ranked.',ru:'<strong>Почему различия:</strong> BPE берёт самую частую пару. WordPiece предпочитает статистически неожиданные пары (PMI). Unigram сохраняет кусочки, максимизирующие правдоподобие. Byte BPE работает прямо на байтах — не-ASCII дороже. <strong>Честность сравнения:</strong> у всех четырёх <em>одинаковый размер словаря</em>, а оба варианта BPE несут маркер границы слова (<code>&lt;/w&gt;</code>, <code>Ġ</code>). Строка с ⚠ выдала <code>[UNK]</code> — вход потерян, она не ранжируется.',tt:'<strong>Нигә аерылалар:</strong> BPE иң еш парны ала. WordPiece статистик көтелмәгән парларны (PMI) өстен күрә. Unigram log-ихтималлыкны максимальләштерүче кисәкләрне саклый. Byte BPE чимал байтларда эшли. <strong>Гадел чагыштыру:</strong> дүртесенә дә <em>бер үк сүзлек бюджеты</em> бирелә, ике BPE варианты да сүз чиге билгесен йөртә (<code>&lt;/w&gt;</code>, <code>Ġ</code>). ⚠ билгеле юл <code>[UNK]</code> биргән — кертү югалган, ул рангланмый.'},
+    noSteps:{en:'No steps generated.',ru:'Шаги не сгенерированы.',tt:'Адымнар ясалмады.'},
+    cost:{en:'cost',ru:'цена',tt:'бәя'},
+    unkTip:{en:'Unknown token \u2014 not in trained vocabulary',ru:'Неизвестный токен \u2014 нет в обученном словаре',tt:'Билгесез токен \u2014 өйрәтелгән сүзлектә юк'},
+    cpHug:{en:'hugs',ru:'основы',tt:'нигезләр'},
+    cpMorph:{en:'morph',ru:'морфология',tt:'морфология'},
+    cpClassic:{en:'classic',ru:'учебник',tt:'дәреслек'},
+    cpNatural:{en:'natural',ru:'текст',tt:'текст'},
+    cpMulti:{en:'multilingual',ru:'языки',tt:'телләр'},
+    tabCompare:{en:'Compare',ru:'Сравнение',tt:'Чагыштыру'},
+    tabAll:{en:'all',ru:'все',tt:'барысы'},
+    tok:{en:'tok',ru:'ток.',tt:'ток.'},
+    lossyTip:{en:'Produced [UNK] — the input was lost, so this row is not ranked',ru:'Выдал [UNK] — вход потерян, строка не участвует в ранжировании',tt:'[UNK] бирде — кертү югалды, бу юл рангланмый'},
+    lost:{en:'lost',ru:'потерян',tt:'югалды'},
+  };
+
+  // ── State ──
+  let algo='bpe',steps=[],si=0,timer=null,speed=900;
+  let trainedModel=null;
+  let prevCorpusKey='hug'; // remember corpus before auto-switch
+  const vizArea=$('vizArea'),stepText=$('stepText'),stepSlider=$('stepSlider'),corpusInput=$('corpusInput');
+  let viterbiCollapsed=false;
+
+  // ── UTF-8 byte tooltip helper ──
+  const ENC=new TextEncoder();
+  const BYTE_MARK='Ġ'; // GPT-2's visible stand-in for the leading space
+  function byteTok(b){
+    if(b===32)return BYTE_MARK;
+    // 0x3C/0x3E must stay escaped, or a literal "<c3>" typed into the corpus
+    // would be indistinguishable from the hex-byte marker syntax.
+    if(b===0x3c||b===0x3e)return '<'+b.toString(16)+'>';
+    return (b>=33&&b<127)?String.fromCharCode(b):'<'+b.toString(16).padStart(2,'0')+'>';
+  }
+  /* GPT-2 keeps the space before a word inside the token stream. Without it,
+     byte-BPE silently loses word boundaries (it cannot detokenize) and gets a
+     free one-token-per-word head start over BPE's </w> in the Compare tab. */
+  function wordBytes(w){return Array.from(ENC.encode(' '+w)).map(byteTok);}
+
+  /* Works on MIXED tokens ("c<c3><a9>") too, not just pure hex runs — after a
+     few merges nearly every interesting token is mixed. */
+  function byteTooltip(tokStr, charMap){
+    if(tokStr==='[UNK]')return null;
+    if(!/<[0-9a-f]{2}>/.test(tokStr))return null;              // nothing raw to explain
+    if(!new RegExp('^(?:<[0-9a-f]{2}>|[!-~Ġ])+$').test(tokStr))return null;
+    const parts=tokStr.match(new RegExp('<[0-9a-f]{2}>|[!-~Ġ]','g'))||[];
+    const hexes=parts.filter(p=>p.length===4);
+    const bytes=new Uint8Array(parts.map(p=>
+      p===BYTE_MARK?32:(p.length===4?parseInt(p.slice(1,3),16):p.charCodeAt(0))));
+    try{const decoded=new TextDecoder('utf-8',{fatal:true}).decode(bytes);return`UTF-8 \u2192 "${decoded}"`;}
+    catch(e){
+      // Incomplete multi-byte run. A byte can belong to SEVERAL characters
+      // (<c3> leads e-acute, u-umlaut AND i-diaeresis) — name every one of them,
+      // instead of claiming the first that happened to be indexed.
+      const hexList=hexes.map(h=>'0x'+h.slice(1,3).toUpperCase()).join(' ');
+      if(charMap){
+        const chars=new Set();
+        for(const h of hexes){const owners=charMap[h];if(owners)for(const c of owners)chars.add(c);}
+        if(chars.size)return`UTF-8 ${hexList} — part of "${[...chars].join('')}"`;
+      }
+      return`UTF-8 byte: ${hexList}`;
+    }
+  }
+
+  // ══════════════════════════════════════
+  // TRAINING ALGORITHMS
+  // ══════════════════════════════════════
+
+  function trainBPE(text,maxM){
+    const words=parseCorpus(text);if(!words.length)return[];
+    let st=words.map(([w,f])=>[w,f,[...w,'</w>']]);
+    const S=[],vocab=new Set(),merges=[];
+    st.forEach(([,,t])=>t.forEach(x=>vocab.add(x)));
+    const snap=(desc,hl,np,phase)=>S.push({tokens:st.map(([w,f,t])=>[w,f,[...t]]),desc,hl,newPiece:np,vocabSize:vocab.size,totalToks:st.reduce((s,[,f,t])=>s+t.length*f,0),mergeCount:merges.length,phase,model:{merges:[...merges],finalVocab:new Set(vocab),type:'bpe'}});
+    const cf={};st.forEach(([,f,t])=>t.forEach(x=>{cf[x]=(cf[x]||0)+f;}));
+    const topC=Object.entries(cf).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,f])=>`<code>${esc(c)}</code>:${f}`).join(' ');
+    snap(TF('bpe_count',vocab.size,topC),null,null,'count');
+    for(let iter=0;iter<maxM;iter++){
+      const pc=countPairs(st);if(!Object.keys(pc).length)break;
+      const sorted=Object.entries(pc).sort((a,b)=>b[1]-a[1]);const[bp]=sorted[0];const[a,b]=bp.split('\t');
+      const top3=sorted.slice(0,3).map(([p,f])=>{const[x,y]=p.split('\t');return`<code>${esc(x)}${esc(y)}</code>:${f}`;}).join('  ');
+      snap(TF('bpe_pair',top3),[a,b],null,'score');
+      const merged=a+b;st=applyMerge(st,a,b,merged);
+      vocab.add(merged);merges.push([a,b,merged]);
+      snap(TF('bpe_merge',merges.length,esc(a),esc(b),esc(merged)),null,merged,'merge');
+    }
+    trainedModel={merges:[...merges],finalVocab:new Set(vocab),type:'bpe'};return S;
+  }
+
+  function trainWordPiece(text,maxM){
+    const words=parseCorpus(text);if(!words.length)return[];
+    let st=words.map(([w,f])=>{const c=[...w];return[w,f,[c[0],...c.slice(1).map(x=>'##'+x)]];});
+    const S=[],vocab=new Set(),merges=[];
+    st.forEach(([,,t])=>t.forEach(x=>vocab.add(x)));
+    const snap=(desc,hl,np,phase)=>S.push({tokens:st.map(([w,f,t])=>[w,f,[...t]]),desc,hl,newPiece:np,vocabSize:vocab.size,totalToks:st.reduce((s,[,f,t])=>s+t.length*f,0),mergeCount:merges.length,phase,model:{merges:[...merges],finalVocab:new Set(vocab),type:'wordpiece'}});
+    snap(TF('wp_split',vocab.size),null,null,'count');
+    for(let iter=0;iter<maxM;iter++){
+      const pc={},tc2={};
+      st.forEach(([,freq,toks])=>{toks.forEach(t=>{tc2[t]=(tc2[t]||0)+freq;});for(let i=0;i<toks.length-1;i++){const k=toks[i]+'\t'+toks[i+1];pc[k]=(pc[k]||0)+freq;}});
+      if(!Object.keys(pc).length)break;
+      const scored=Object.entries(pc).map(([pair,freq])=>{const[a,b]=pair.split('\t');return[a,b,freq,freq/((tc2[a]||1)*(tc2[b]||1))];}).sort((x,y)=>y[3]-x[3]);
+      const[a,b,,sc]=scored[0];
+      const top3=scored.slice(0,3).map(([aa,bb,,ss])=>`<code>${esc(aa)}+${esc(bb)}</code>:${ss.toFixed(3)}`).join('  ');
+      snap(TF('wp_score',top3),[a,b],null,'score');
+      const aBase=a.startsWith('##')?a.slice(2):a;const bBase=b.startsWith('##')?b.slice(2):b;
+      const mTok=(a.startsWith('##')?'##':'')+aBase+bBase;
+      st=applyMerge(st,a,b,mTok);vocab.add(mTok);merges.push([a,b,mTok]);
+      snap(TF('bpe_merge',merges.length,esc(a),esc(b),esc(mTok)),null,mTok,'merge');
+    }
+    trainedModel={merges:[...merges],finalVocab:new Set(vocab),type:'wordpiece'};return S;
+  }
+
+  function trainUnigram(text,target){
+    const words=parseCorpus(text);if(!words.length)return[];
+    const S=[];
+    const subCount={};words.forEach(([w,freq])=>{for(let i=0;i<w.length;i++)for(let len=1;len<=Math.min(UNI_MAX_PIECE,w.length-i);len++){const sub=w.slice(i,i+len);subCount[sub]=(subCount[sub]||0)+freq;}});
+    let vocab={};const total=Object.values(subCount).reduce((a,b)=>a+b,0);
+    for(const[p,c]of Object.entries(subCount))vocab[p]=Math.log(c/total);
+
+    function viterbi(word,voc){
+      const n=word.length,best=new Array(n+1).fill(-Infinity),bt=new Array(n+1).fill(0);best[0]=0;
+      for(let i=0;i<n;i++){if(best[i]===-Infinity)continue;for(let len=1;len<=Math.min(UNI_MAX_PIECE,n-i);len++){const p=word.slice(i,i+len);let sc=voc[p];if(sc===undefined){if(len===1)sc=-20;else continue;}if(best[i]+sc>best[i+len]){best[i+len]=best[i]+sc;bt[i+len]=i;}}}
+      const toks=[];let pos=n;if(best[n]===-Infinity)return{toks:[...word],score:-Infinity};while(pos>0){toks.unshift(word.slice(bt[pos],pos));pos=bt[pos];}return{toks,score:best[n]};
+    }
+    /* Genuine k-best Viterbi: every cell keeps its top-k partial paths and each
+       transition extends all of them. The previous version ran plain Viterbi
+       five times with the max piece length capped at 1..5 and presented the
+       results as "the k best segmentations" — they are best-under-a-constraint,
+       which is a different thing, and the 2nd-best path generally is not among
+       them. For a panel whose whole job is to explain Viterbi, that mattered. */
+    function topSegmentations(word,voc,k){
+      k=k||4;
+      const n=word.length;
+      const best=new Array(n+1);for(let i=0;i<=n;i++)best[i]=[];
+      best[0].push({score:0,from:-1,rank:-1});
+      for(let i=0;i<n;i++){
+        if(!best[i].length)continue;
+        for(let len=1;len<=Math.min(UNI_MAX_PIECE,n-i);len++){
+          const p=word.slice(i,i+len);
+          let sc=voc[p];
+          if(sc===undefined){if(len===1)sc=-20;else continue;}
+          const j=i+len;
+          for(let r=0;r<best[i].length;r++)best[j].push({score:best[i][r].score+sc,from:i,rank:r});
+          best[j].sort((a,b)=>b.score-a.score);
+          if(best[j].length>k)best[j].length=k;
+        }
+      }
+      const out=[];
+      for(let r=0;r<best[n].length;r++){
+        const toks=[];let pos=n,rank=r;
+        while(pos>0){const e=best[pos][rank];toks.unshift(word.slice(e.from,pos));pos=e.from;rank=e.rank;}
+        out.push({toks,score:best[n][r].score});
+      }
+      return out;
+    }
+    function getTok(voc){return words.map(([w,f])=>[w,f,viterbi(w,voc).toks]);}
+    function loss(voc){let t=0;words.forEach(([w,f])=>{t+=viterbi(w,voc).score*f;});return -t;}
+    let prunedTotal=0;
+    const snap=(desc,hl,np,phase)=>{const toks=getTok(vocab);S.push({tokens:toks,desc,hl,newPiece:np,vocabSize:Object.keys(vocab).length,totalToks:toks.reduce((s,[,f,t])=>s+t.length*f,0),mergeCount:prunedTotal,phase,viterbiDetail:topSegmentations(words[0][0],vocab),model:{merges:[],finalVocab:{...vocab},type:'unigram'}});};
+    snap(TF('uni_build',Object.keys(vocab).length),null,null,'count');
+    let iter=0;
+    while(Object.keys(vocab).length>target&&iter<60){
+      iter++;const curLoss=loss(vocab);const cands=[];
+      for(const piece of Object.keys(vocab)){if(piece.length<=1)continue;const w2={...vocab};delete w2[piece];let ok=true;for(const[w]of words){if(viterbi(w,w2).score===-Infinity){ok=false;break;}}if(!ok)continue;cands.push([piece,loss(w2)-curLoss]);}
+      if(!cands.length)break;cands.sort((a,b)=>a[1]-b[1]);
+      const rmCount=Math.max(1,Math.floor(cands.length*0.15));const toRm=cands.slice(0,rmCount);
+      const top3=cands.slice(0,3).map(([p,l])=>`<code>${esc(p)}</code> ${T('cost')}:${l.toFixed(2)}`).join('  ');
+      const hlPieces=toRm.map(([p])=>p);
+      snap(TF('uni_score',iter,top3),null,null,'score');
+      S[S.length-1].hlPieces=hlPieces;
+      toRm.forEach(([p])=>{delete vocab[p];});prunedTotal+=rmCount;
+      const vals=Object.values(vocab);const maxV=Math.max(...vals);
+      const logSum=maxV+Math.log(vals.reduce((a,b)=>a+Math.exp(b-maxV),0));
+      for(const p of Object.keys(vocab))vocab[p]-=logSum;
+      snap(TF('uni_prune',rmCount,Object.keys(vocab).length),null,null,'merge');
+      // Detect which words changed segmentation after prune
+      const curStep=S[S.length-1],prevStep=S[S.length-2];
+      const changedIdx=[];
+      for(let wi=0;wi<curStep.tokens.length;wi++){if(curStep.tokens[wi][2].join('\x00')!==prevStep.tokens[wi][2].join('\x00'))changedIdx.push(wi);}
+      curStep.changedWordIdx=changedIdx;
+    }
+    trainedModel={merges:[],finalVocab:{...vocab},type:'unigram'};return S;
+  }
+
+  function trainByteBPE(text,maxM){
+    const words=parseCorpus(text);if(!words.length)return[];
+    /* Byte-to-character map for tooltips. A byte can belong to SEVERAL
+       characters (<c3> is the lead byte of é, ü AND ï), so collect all of them —
+       reporting only the first one told the reader "part of é" while they were
+       hovering over ü. */
+    const owners={};
+    words.forEach(([w])=>{
+      for(const ch of w){
+        for(const b of ENC.encode(ch)){
+          const bStr=byteTok(b);
+          (owners[bStr]=owners[bStr]||new Set()).add(ch);
+        }
+      }
+    });
+    const byteCharMap={};
+    for(const k of Object.keys(owners))byteCharMap[k]=[...owners[k]].join('');
+    let st=words.map(([w,f])=>[w,f,wordBytes(w)]);
+    const S=[],vocab=new Set(),merges=[];
+    st.forEach(([,,t])=>t.forEach(x=>vocab.add(x)));
+    const snap=(desc,hl,np,phase)=>S.push({tokens:st.map(([w,f,t])=>[w,f,[...t]]),desc,hl,newPiece:np,vocabSize:vocab.size,totalToks:st.reduce((s,[,f,t])=>s+t.length*f,0),mergeCount:merges.length,phase,model:{merges:[...merges],finalVocab:new Set(vocab),type:'bytebpe'},byteCharMap:{...byteCharMap}});
+    snap(TF('byte_enc',vocab.size),null,null,'count');
+    for(let iter=0;iter<maxM;iter++){
+      const pc=countPairs(st);if(!Object.keys(pc).length)break;
+      const sorted=Object.entries(pc).sort((a,b)=>b[1]-a[1]);const[bp]=sorted[0];const[a,b]=bp.split('\t');
+      const top3=sorted.slice(0,3).map(([p,f])=>{const[x,y]=p.split('\t');return`<code>${esc(x)}${esc(y)}</code>:${f}`;}).join('  ');
+      snap(TF('byte_pair',top3),[a,b],null,'score');
+      const merged=a+b;st=applyMerge(st,a,b,merged);
+      vocab.add(merged);merges.push([a,b,merged]);
+      snap(TF('bpe_merge',merges.length,esc(a),esc(b),esc(merged)),null,merged,'merge');
+    }
+    trainedModel={merges:[...merges],finalVocab:new Set(vocab),type:'bytebpe',byteCharMap:{...byteCharMap}};return S;
+  }
+
+  // ══════════════════════════════════════
+  // INFERENCE
+  // ══════════════════════════════════════
+  function inferBPE(word,model){
+    /* Character-level BPE genuinely cannot represent a character it never saw.
+       Silently emitting it as a token hid exactly the failure that byte-level
+       BPE exists to fix — so surface it. */
+    const base=model.finalVocab;
+    let toks=[...[...word].map(ch=>base.has(ch)?ch:'[UNK]'),'</w>'];
+    for(const[a,b,m]of model.merges){const nt=[];let i=0;while(i<toks.length){if(i<toks.length-1&&toks[i]===a&&toks[i+1]===b){nt.push(m);i+=2;}else{nt.push(toks[i]);i++;}}toks=nt;}
+    return toks;
+  }
+  function inferWordPiece(word,model){
+    // Real BERT WordPiece: if any subword fails, entire word → [UNK]
+    const voc=model.finalVocab;let i=0;const toks=[];let isFirst=true;let failed=false;
+    while(i<word.length){const prefix=isFirst?'':'##';let longest=null,lLen=0;
+      for(let end=Math.min(word.length,i+12);end>i;end--){const sub=prefix+word.slice(i,end);if(voc.has(sub)){longest=sub;lLen=end-i;break;}}
+      if(longest){toks.push(longest);i+=lLen;isFirst=false;}else{failed=true;break;}}
+    return failed?['[UNK]']:toks;
+  }
+  function inferUnigram(word,model){
+    const voc=model.finalVocab;const n=word.length;
+    const best=new Array(n+1).fill(-Infinity),bt=new Array(n+1).fill(0);best[0]=0;
+    for(let i=0;i<n;i++){if(best[i]===-Infinity)continue;for(let len=1;len<=Math.min(UNI_MAX_PIECE,n-i);len++){const p=word.slice(i,i+len);let sc=voc[p];if(sc===undefined){if(len===1)sc=-20;else continue;}if(best[i]+sc>best[i+len]){best[i+len]=best[i]+sc;bt[i+len]=i;}}}
+    if(best[n]===-Infinity)return['[UNK]'];
+    const toks=[];let pos=n;while(pos>0){toks.unshift(word.slice(bt[pos],pos));pos=bt[pos];}
+    /* Unigram has exactly the same character-coverage limit as char-level BPE:
+       the -20 fallback let it emit characters that are not in its vocabulary at
+       all, so it silently escaped the [UNK] flag in Compare and got ranked best
+       on input it could not actually represent. */
+    return toks.map(t=>voc[t]===undefined?'[UNK]':t);
+  }
+  function inferByteBPE(word,model){
+    let toks=wordBytes(word);
+    for(const[a,b,m]of model.merges){const nt=[];let i=0;while(i<toks.length){if(i<toks.length-1&&toks[i]===a&&toks[i+1]===b){nt.push(m);i+=2;}else{nt.push(toks[i]);i++;}}toks=nt;}
+    return toks;
+  }
+  function inferWithModel(word,model){
+    if(!model)return['?'];
+    switch(model.type){
+      case'bpe':return inferBPE(word,model);
+      case'wordpiece':return inferWordPiece(word,model);
+      case'unigram':return inferUnigram(word,model);
+      case'bytebpe':return inferByteBPE(word,model);
+    }return['?'];
+  }
+
+  // ══════════════════════════════════════
+  // COMPARE MODE
+  // ══════════════════════════════════════
+  function trainAll(text){
+    const configs=[
+      {id:'bpe',name:'BPE',model:'GPT-2',train:t=>trainBPE(t,MAX_MERGES)},
+      {id:'wordpiece',name:'WordPiece',model:'BERT',train:t=>trainWordPiece(t,MAX_MERGES)},
+      {id:'unigram',name:'Unigram',model:'T5',train:t=>trainUnigram(t,unigramTarget(t))},
+      {id:'bytebpe',name:'Byte BPE',model:'GPT-4',train:t=>trainByteBPE(t,MAX_MERGES)},
+    ];
+    const models={};
+    for(const cfg of configs){
+      const savedModel=trainedModel;
+      cfg.train(text);
+      models[cfg.id]={...trainedModel,name:cfg.name,model:cfg.model};
+      trainedModel=savedModel;
+    }
+    return models;
+  }
+
+  // ══════════════════════════════════════
+  // TRAINING DISPATCH & RENDER
+  // ══════════════════════════════════════
+  function resetUI(){
+    stopPlay();
+    /* Compare mode never repopulates `steps`; leaving the previous tab's steps
+       behind let the language switcher call render() on top of the comparison
+       table and wipe it. */
+    steps=[];
+    vizArea.innerHTML='';vizArea.scrollTop=0;
+    $('testResult').innerHTML='';
+    $('statVocab').textContent='\u2014';$('statToks').textContent='\u2014';$('statMerges').textContent='\u2014';
+    trainedModel=null;lastRenderedStep=-1;
+  }
+
+  function getCorpusWords(){return corpusInput.value.trim().split(/\s+/).filter(Boolean);}
+  function getDefaultTestWords(){
+    const words=[...new Set(getCorpusWords())];
+    return words.slice(0,2).join(' ')||'';
+  }
+
+  function runTraining(){
+    resetUI();
+    const text=corpusInput.value.trim();
+    if(!text){
+      steps=[];
+      vizArea.innerHTML=`<div class="empty-msg">${T('enterCorpus')}</div>`;
+      $('controlsRow').style.display='';$('stepBar').style.display='';$('testBar').style.display='';
+      stepText.innerHTML=T('noCorpus');
+      $('stepNum').textContent='\u2014';$('stepCur').textContent='0';$('stepMax').textContent='0';
+      return;
+    }
+    if(algo==='compare'){renderCompare();return;}
+    switch(algo){
+      case'bpe':steps=trainBPE(text,MAX_MERGES);break;case'wordpiece':steps=trainWordPiece(text,MAX_MERGES);break;
+      case'unigram':steps=trainUnigram(text,unigramTarget(text));break;case'bytebpe':steps=trainByteBPE(text,MAX_MERGES);break;
+    }
+    if(!steps.length){vizArea.innerHTML=`<div class="empty-msg">${T('noSteps')}</div>`;return;}
+    si=0;stepSlider.max=steps.length-1;stepSlider.value=0;
+    $('controlsRow').style.display='';$('stepBar').style.display='';$('testBar').style.display='';
+    $('statsBox').style.display='';
+    // Update test bar hint
+    updateTestHint();
+    render();renderTest();
+  }
+
+  function updateTestHint(){
+    const hintKeys={bpe:'hint_bpe',wordpiece:'hint_wp',unigram:'hint_uni',bytebpe:'hint_byte'};
+    $('testHint').textContent=T(hintKeys[algo])||'';
+  }
+
+  function makeTokSpan(t,extraClass){
+    const span=document.createElement('span');span.className='tok'+(extraClass?' '+extraClass:'');
+    if(t==='[UNK]'){span.classList.add('tok-unk');span.textContent=t;span.title=T('unkTip');return span;}
+    const c=clr(t);span.style.background=c.bg;span.style.color=c.fg;span.textContent=t;
+    // Byte BPE hex tooltip
+    if(algo==='bytebpe'||extraClass==='bytebpe-tok'){
+      const cm=steps[si]&&steps[si].byteCharMap;
+      const tip=byteTooltip(t,cm);if(tip)span.title=tip;
+    }
+    return span;
+  }
+
+  /* FLIP. The stylesheet carried `transition: all .35s` on .tok, but render()
+     wipes vizArea and rebuilds every node, so that transition could never fire
+     and the merge was never actually animated. Measure First, rebuild (Last),
+     Invert with a transform, then Play.
+     The identity key is (word index, cumulative unit offset): token boundaries
+     shift when pieces merge, but a piece's starting offset does not — so a
+     merged token inherits the position, and the colour, of its left operand. */
+  function captureRects(){
+    const m=new Map();
+    vizArea.querySelectorAll('.tok[data-key]').forEach(el=>m.set(el.dataset.key,el.getBoundingClientRect()));
+    return m;
+  }
+  function playFlip(prev){
+    if(!prev.size)return;
+    vizArea.querySelectorAll('.tok[data-key]').forEach(el=>{
+      const p=prev.get(el.dataset.key);if(!p)return;
+      const r=el.getBoundingClientRect();
+      const dx=p.left-r.left,dy=p.top-r.top;
+      if(Math.abs(dx)<0.5&&Math.abs(dy)<0.5)return;
+      el.style.transition='none';
+      el.style.transform=`translate(${dx}px,${dy}px)`;
+      requestAnimationFrame(()=>{
+        el.style.transition='transform 0.32s cubic-bezier(0.4,0,0.2,1)';
+        el.style.transform='';
+      });
+    });
+  }
+
+  let lastRenderedStep=-1;
+  function render(){
+    const s=steps[si];if(!s)return;
+    const prevRects=captureRects();
+    // Step number with phase color
+    const stepNum=$('stepNum');
+    stepNum.textContent=si;
+    stepNum.className='step-num phase-'+(s.phase||'count');
+    $('stepCur').textContent=si;$('stepMax').textContent=steps.length-1;stepSlider.value=si;
+    stepText.innerHTML=s.desc;
+    $('statVocab').textContent=s.vocabSize;$('statToks').textContent=s.totalToks;$('statMerges').textContent=s.mergeCount;
+    $('statLabel3').textContent=(algo==='unigram')?T('pruned'):T('merges');
+    // Build viz
+    vizArea.innerHTML='';
+    const wordGrid=document.createElement('div');wordGrid.className='word-grid';
+    // For Unigram: sets for animation
+    const dangerSet=s.hlPieces?new Set(s.hlPieces):null;
+    const changedSet=s.changedWordIdx?new Set(s.changedWordIdx):null;
+    const keysUsed=new Set();
+    s.tokens.forEach(([word,freq,toks],wi)=>{
+      const row=document.createElement('div');row.className='word-row';
+      const lbl=document.createElement('span');lbl.className='word-label';lbl.title=word;lbl.textContent=word;row.appendChild(lbl);
+      const fr=document.createElement('span');fr.className='word-freq';fr.textContent='\u00d7'+freq;row.appendChild(fr);
+      const td=document.createElement('div');td.className='word-toks';
+      // Pre-compute merge pair positions to handle overlaps correctly
+      const hlL=new Set(),hlR=new Set();
+      if(s.hl){
+        for(let i=0;i<toks.length-1;i++){
+          if(toks[i]===s.hl[0]&&toks[i+1]===s.hl[1]&&!hlR.has(i)){
+            hlL.add(i);hlR.add(i+1);i++; // skip next to avoid overlap
+          }
+        }
+      }
+      let unitOffset=0;
+      for(let i=0;i<toks.length;i++){
+        const t=toks[i];
+        const isL=hlL.has(i),isR=hlR.has(i);
+        if(isR){const bridge=document.createElement('span');bridge.className='merge-bridge';td.appendChild(bridge);}
+        const span=makeTokSpan(t);
+        /* The offset is stable across a merge, so a merged piece inherits the
+           position of its left operand. The '##' convention is genuinely
+           ambiguous on a corpus containing '#', so enforce uniqueness rather
+           than trust the count: a colliding token simply does not animate,
+           instead of animating from some other token's rectangle. */
+        let key=wi+':'+unitOffset;
+        while(keysUsed.has(key))key+='.';
+        keysUsed.add(key);
+        span.dataset.key=key;
+        unitOffset+=tokUnits(t).length;
+        if(isL&&isR)span.classList.add('merge-lr');
+        else if(isL)span.classList.add('merge-l');
+        else if(isR)span.classList.add('merge-r');
+        if(s.newPiece&&t===s.newPiece&&si!==lastRenderedStep)span.classList.add('just-born');
+        // Unigram: danger highlight for pieces about to be pruned
+        if(dangerSet&&dangerSet.has(t))span.classList.add('tok-danger');
+        // Unigram: born animation for words with changed segmentation
+        if(changedSet&&changedSet.has(wi)&&si!==lastRenderedStep)span.classList.add('just-born');
+        td.appendChild(span);
+      }
+      row.appendChild(td);wordGrid.appendChild(row);
+    });
+    vizArea.appendChild(wordGrid);
+    // Viterbi detail for Unigram (collapsible)
+    if(algo==='unigram'&&s.viterbiDetail&&s.viterbiDetail.length>1){
+      const detail=document.createElement('div');detail.className='viterbi-detail';
+      const title=document.createElement('div');title.className='vd-title'+(viterbiCollapsed?' collapsed':'');
+      title.textContent=TF('viterbi',s.tokens[0][0]);
+      title.addEventListener('click',()=>{
+        viterbiCollapsed=!viterbiCollapsed;
+        title.classList.toggle('collapsed');
+        body.classList.toggle('collapsed');
+        if(!viterbiCollapsed)body.style.maxHeight=body.scrollHeight+'px';
+      });
+      detail.appendChild(title);
+      const body=document.createElement('div');body.className='vd-body'+(viterbiCollapsed?' collapsed':'');
+      s.viterbiDetail.forEach((seg,i)=>{
+        const row=document.createElement('div');row.className='viterbi-row'+(i===0?' optimal':'');
+        const td=document.createElement('div');td.className='viterbi-toks';
+        seg.toks.forEach(t=>{const sp=document.createElement('span');sp.className='vtok';const c=clr(t);sp.style.background=c.bg;sp.style.color=c.fg;sp.textContent=t;td.appendChild(sp);});
+        row.appendChild(td);
+        const sc=document.createElement('span');sc.className='viterbi-score';sc.textContent=seg.score.toFixed(2);row.appendChild(sc);
+        if(i===0){const badge=document.createElement('span');badge.className='viterbi-badge';badge.textContent=T('optimal');row.appendChild(badge);}
+        body.appendChild(row);
+      });
+      detail.appendChild(body);
+      vizArea.appendChild(detail);
+      if(!viterbiCollapsed)body.style.maxHeight=body.scrollHeight+'px';
+    }
+    $('btnPrev').disabled=si===0;$('btnFirst').disabled=si===0;
+    $('btnNext').disabled=si>=steps.length-1;$('btnLast').disabled=si>=steps.length-1;
+    playFlip(prevRects);
+    lastRenderedStep=si;
+    renderTest();
+  }
+
+  function renderTest(){
+    const testText=$('testInput').value.trim();const result=$('testResult');result.innerHTML='';
+    if(!testText||!steps.length)return;
+    const s=steps[si];if(!s||!s.model)return;
+    const model=s.model;
+    const testWords=testText.split(/\s+/).filter(Boolean);
+    testWords.forEach((w,wi)=>{
+      const toks=inferWithModel(w,model);
+      toks.forEach(t=>{
+        const span=makeTokSpan(t);
+        // For bytebpe in test bar, also add tooltip
+        if(model.type==='bytebpe'){const s2=steps[si];const tip=byteTooltip(t,s2&&s2.byteCharMap);if(tip)span.title=tip;}
+        result.appendChild(span);
+      });
+      if(wi<testWords.length-1)result.appendChild(makeSpacer());
+    });
+  }
+
+  function renderCompare(){
+    $('controlsRow').style.display='none';$('stepBar').style.display='none';$('testBar').style.display='none';
+    $('statsBox').style.display='none';
+    const text=corpusInput.value.trim();
+    if(!text){vizArea.innerHTML=`<div class="empty-msg">${T('enterCompare')}</div>`;return;}
+    const models=trainAll(text);
+    vizArea.innerHTML='';
+    const inputRow=document.createElement('div');inputRow.className='cmp-input-row';
+    inputRow.innerHTML=`<label>${T('cmpLabel')}</label>`;
+    const inp=document.createElement('input');inp.id='cmpInput';inp.type='text';
+    inp.value=getDefaultTestWords();
+    inp.spellcheck=false;
+    inp.addEventListener('input',()=>fillCompare(models));
+    inputRow.appendChild(inp);vizArea.appendChild(inputRow);
+    fillCompare(models);
+  }
+
+  function fillCompare(models){
+    vizArea.querySelectorAll('.cmp-row,.cmp-note').forEach(r=>r.remove());
+    const testText=($('cmpInput')||{}).value||'';
+    const testWords=testText.trim().split(/\s+/).filter(Boolean);
+    const order=['bpe','wordpiece','unigram','bytebpe'];
+    const rows=[];const counts={};const lossy={};
+    for(const id of order){
+      const m=models[id];if(!m)continue;
+      const row=document.createElement('div');row.className='cmp-row';row.dataset.algoId=id;
+      const label=document.createElement('div');label.className='cmp-label';
+      label.innerHTML=`${m.name}<br><span class="cmp-model">${m.model}</span>`;row.appendChild(label);
+      const td=document.createElement('div');td.className='cmp-toks';
+      let totalCount=0;
+      testWords.forEach((w,wi)=>{
+        const toks=inferWithModel(w,m);totalCount+=toks.length;
+        if(toks.includes('[UNK]'))lossy[id]=true;
+        toks.forEach(t=>{
+          const span=makeTokSpan(t,id==='bytebpe'?'bytebpe-tok':'');
+          if(id==='bytebpe'){const tip=byteTooltip(t,m.byteCharMap);if(tip)span.title=tip;}
+          td.appendChild(span);
+        });
+        if(wi<testWords.length-1)td.appendChild(makeSpacer());
+      });
+      row.appendChild(td);
+      const stats=document.createElement('span');stats.className='cmp-stats';
+      /* Do NOT print a token count for a row that threw the input away: a
+         fully-unknown word collapses to a single [UNK], and "1 tok" reads as the
+         best score on the board when it is in fact total failure. */
+      stats.textContent=lossy[id]?('⚠ '+T('lost')):(totalCount+' '+T('tok'));
+      if(lossy[id])stats.title=T('lossyTip');
+      row.appendChild(stats);
+      rows.push(row);counts[id]=totalCount;
+    }
+    /* A row that emitted [UNK] threw the input away — one [UNK] is not
+       "efficient", it is total information loss. Rank only lossless rows. */
+    const fair=Object.keys(counts).filter(id=>!lossy[id]);
+    const vals=fair.map(id=>counts[id]);
+    const minC=Math.min(...vals),maxC=Math.max(...vals);
+    for(const row of rows){
+      const id=row.dataset.algoId;const stat=row.querySelector('.cmp-stats');
+      if(lossy[id]){row.classList.add('cmp-lossy');stat.classList.add('cmp-lossy-stat');}
+      else if(minC!==maxC){
+        if(counts[id]===minC){row.classList.add('cmp-best');stat.classList.add('cmp-best-stat');}
+        if(counts[id]===maxC){row.classList.add('cmp-worst');stat.classList.add('cmp-worst-stat');}
+      }
+      vizArea.appendChild(row);
+    }
+    // Explanation note
+    const note=document.createElement('div');note.className='cmp-note';
+    note.innerHTML=T('cmpNote');
+    vizArea.appendChild(note);
+  }
+
+  // ── Theory ──
+  const updateTheory = () => Kit.showTheory(algo);
+
+  function updateLangUI(){
+    $('introText').textContent=T('intro');
+    $('testLabel').textContent=T('tryWord');
+    $('corpusLabel').textContent=T('corpus');
+    $('statLabel1').textContent=T('vocab');
+    $('statLabelToks').textContent=T('totalToks');
+    $('statLabel3').textContent=(algo==='unigram')?T('pruned'):T('merges');
+    // Corpus tooltips
+    const tipKeys={hug:'tip_hug',morph:'tip_morph',classic:'tip_classic',natural:'tip_natural',multi:'tip_multi'};
+    document.querySelectorAll('.corpus-pre').forEach(btn=>{const k=tipKeys[btn.dataset.key];if(k)btn.title=T(k);});
+    // Test hint
+    updateTestHint();
+    // Compare note if visible
+    const note=vizArea.querySelector('.cmp-note');
+    if(note)note.innerHTML=T('cmpNote');
+    // Compare label if visible
+    const cmpLbl=vizArea.querySelector('.cmp-input-row label');
+    if(cmpLbl)cmpLbl.textContent=T('cmpLabel');
+  }
+
+  // ── Event listeners ──
+
+  document.querySelectorAll('.algo-tab').forEach(tab=>{tab.addEventListener('click',()=>{
+    clearActive('.algo-tab');tab.classList.add('active');
+    const prevAlgo=algo;
+    algo=tab.dataset.algo;updateTheory();
+    // Auto-switch to multilingual corpus for Byte BPE; restore on leave
+    if(algo==='bytebpe'&&prevAlgo!=='bytebpe'){
+      const curKey=document.querySelector('.corpus-pre.active');
+      if(curKey&&curKey.dataset.key!=='multi'){
+        prevCorpusKey=curKey.dataset.key;
+        clearActive('.corpus-pre');
+        const multiBtn=document.querySelector('.corpus-pre[data-key="multi"]');
+        if(multiBtn){multiBtn.classList.add('active');corpusInput.value=CORPORA.multi;updateCharCount();}
+      }
+    } else if(prevAlgo==='bytebpe'&&algo!=='bytebpe'&&prevCorpusKey){
+      clearActive('.corpus-pre');
+      const restoreBtn=document.querySelector(`.corpus-pre[data-key="${prevCorpusKey}"]`);
+      if(restoreBtn){restoreBtn.classList.add('active');corpusInput.value=CORPORA[prevCorpusKey];updateCharCount();}
+      prevCorpusKey=null;
+    }
+    runTraining();
+  });});
+
+  document.querySelectorAll('.corpus-pre').forEach(btn=>{btn.addEventListener('click',()=>{clearActive('.corpus-pre');btn.classList.add('active');corpusInput.value=CORPORA[btn.dataset.key];prevCorpusKey=btn.dataset.key;updateCharCount();runTraining();});});
+
+  // Char counter + deselect preset on manual edit
+  function updateCharCount(){$('charCount').textContent=corpusInput.value.length+'/120';}
+  updateCharCount();
+  let deb=null;
+  corpusInput.addEventListener('input',()=>{
+    updateCharCount();
+    const curText=corpusInput.value;
+    let matchesPreset=false;
+    for(const[k,v]of Object.entries(CORPORA)){if(curText===v){matchesPreset=true;break;}}
+    /* Forget the remembered preset too: otherwise a visit to the Byte BPE tab
+       (which switches to `multi`) would restore it on the way back and silently
+       throw away whatever the user had typed. */
+    if(!matchesPreset){clearActive('.corpus-pre');prevCorpusKey=null;}
+    clearTimeout(deb);deb=setTimeout(runTraining,400);
+  });
+
+  $('btnFirst').addEventListener('click',()=>{si=0;render();});
+  $('btnPrev').addEventListener('click',()=>{if(si>0){si--;render();}});
+  $('btnNext').addEventListener('click',()=>{if(si<steps.length-1){si++;render();}});
+  $('btnLast').addEventListener('click',()=>{si=steps.length-1;render();});
+  stepSlider.addEventListener('input',()=>{si=parseInt(stepSlider.value);render();});
+  $('testInput').addEventListener('input',renderTest);
+
+  function stopPlay(){if(timer){clearInterval(timer);timer=null;}$('btnPlay').innerHTML='&#9654;';}
+  $('btnPlay').addEventListener('click',()=>{if(timer){stopPlay();return;}if(si>=steps.length-1)si=0;$('btnPlay').innerHTML='&#9646;&#9646;';timer=setInterval(()=>{if(si>=steps.length-1){stopPlay();return;}si++;render();},speed);});
+  document.querySelectorAll('.spd').forEach(btn=>{btn.addEventListener('click',()=>{clearActive('.spd');btn.classList.add('active');speed=parseInt(btn.dataset.ms);if(timer){stopPlay();$('btnPlay').click();}});});
+
+  // ── Keyboard shortcuts ──
+  Kit.onKey({
+    ' ':        () => { if (guardKeys()) $('btnPlay').click(); },
+    ArrowLeft:  () => { if (guardKeys() && si > 0) { si--; render(); } },
+    ArrowRight: () => { if (guardKeys() && si < steps.length - 1) { si++; render(); } },
+    Home:       () => { if (guardKeys()) { si = 0; render(); } },
+    End:        () => { if (guardKeys()) { si = steps.length - 1; render(); } },
+  });
+  const guardKeys = () => algo !== 'compare' && steps.length > 0;
+
+
+  // ── Init ──
+  Kit.initI18n(I18N, {
+    tab: () => algo,
+    onChange: () => {
+      updateLangUI();
+      // step descriptions are built at training time, so they must be rebuilt
+      const savedSi = si; runTraining();
+      if (algo !== 'compare' && steps.length) { si = Math.min(savedSi, steps.length - 1); render(); }
+      Kit.lockTheoryHeight();
+    },
+  });
+  updateTheory(); updateLangUI(); runTraining();
+  Kit.autoLockTheory();
+
+  window.__demo = {
+    trainBPE, trainWordPiece, trainUnigram, trainByteBPE, unigramTarget, MAX_MERGES, UNI_MAX_PIECE,
+    inferBPE, inferWordPiece, inferUnigram, inferByteBPE, inferWithModel, trainAll,
+    byteTooltip, wordBytes, byteTok, BYTE_MARK, tokUnits, clr, hash, I18N,
+    get model() { return trainedModel; },
+  };
+})();
+</script>
+</body>
+</html>

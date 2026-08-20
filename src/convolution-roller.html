@@ -1,0 +1,714 @@
+<!-- OUT: Signals & Systems/convolution-roller.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convolution Roller</title>
+<style>
+/*KIT-CSS*/
+  .top-row {
+    display: grid;
+    grid-template-columns: 1fr 190px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .controls-box {
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .ctrl-group { flex-shrink: 0; }
+  .ctrl-group label {
+    display: block;
+    font-size: 8px;
+    font-weight: 600;
+    color: #7088a0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+    min-width: 80px;
+  }
+
+  .sig-btns {
+    display: flex;
+    gap: 2px;
+  }
+  .sig-btn {
+    background: rgba(60,130,200,0.06);
+    border: 1px solid rgba(60,130,200,0.1);
+    color: #7088a0;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    padding: 3px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sig-btn:hover { color: #b0c8e0; }
+  .sig-btn.active { background: rgba(59,164,255,0.15); color: #3ba4ff; border-color: rgba(59,164,255,0.3); }
+
+  .sig-formula {
+    margin-top: 2px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+  }
+  .sig-formula .katex { font-size: 0.65em; }
+  .f-formula-color { color: rgba(59,164,255,0.85); }
+  .g-formula-color { color: rgba(255,159,28,0.85); }
+
+  .ctrl-group input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(60,130,200,0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .ctrl-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #3ba4ff;
+    border: 2px solid #0a1018;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(59,164,255,0.5);
+  }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ctrl-row .val {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: #e8ecf0;
+    min-width: 42px;
+    text-align: right;
+  }
+  .ctrl-row-spread { justify-content: space-between; height: 26px; overflow: hidden; flex-shrink: 0; }
+
+  .play-btn {
+    background: rgba(59,164,255,0.12);
+    border: 1px solid rgba(59,164,255,0.2);
+    color: #3ba4ff;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 82px;
+  }
+  .play-btn:hover { background: rgba(59,164,255,0.2); }
+
+  .status-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: #2ee8a8;
+    min-width: 66px;
+    text-align: right;
+  }
+
+  .flip-btn {
+    min-width: 26px; padding: 3px 0; text-align: center;
+    background: rgba(255,159,28,0.12);
+    border-color: rgba(255,159,28,0.25);
+    color: #ffb84d;
+  }
+  .flip-btn:hover { background: rgba(255,159,28,0.22); }
+
+  
+  
+
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  
+
+  
+  
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  /* ── Responsive: below 700px the square layout stops working ──
+     The desktop layout is a fixed-aspect "slide"; on a phone that produces
+     unusably small canvases and clips the theory panel. Here the app becomes a
+     normal scrolling column instead. */
+  
+
+  @media (max-width: 700px) {
+    .top-row { grid-template-columns: 1fr; }
+    .mid-row { grid-template-columns: 1fr; }
+    #inputCanvas { height: 150px; }
+    #productCanvas, #convCanvas { height: 170px; }
+    .hint-bar { height: auto; white-space: normal; line-height: 1.35; padding: 2px 0; }
+    .controls-box { padding: 10px; }
+    .header { height: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 id="title">Convolution Roller</h1>
+    <span class="tag" id="tagLine">Signals &amp; Systems</span>
+  </div>
+
+  <div class="hint-bar" id="hintBar"></div>
+
+  <div class="top-row">
+    <div class="cbox"><canvas id="inputCanvas" height="120"></canvas></div>
+    <div class="cbox controls-box">
+      <div class="ctrl-group">
+        <label id="labelF">Signal f(τ)</label>
+        <div class="sig-btns" id="fBtns">
+          <button class="sig-btn active" data-sig="rect">rect</button>
+          <button class="sig-btn" data-sig="tri">tri</button>
+          <button class="sig-btn" data-sig="gauss">gauss</button>
+          <button class="sig-btn" data-sig="exp">exp</button>
+        </div>
+        <div class="sig-formula f-formula-color" id="fFormula"></div>
+      </div>
+      <div class="ctrl-group">
+        <label id="labelG">Signal g(τ)</label>
+        <div class="sig-btns" id="gBtns">
+          <button class="sig-btn active" data-sig="rect">rect</button>
+          <button class="sig-btn" data-sig="tri">tri</button>
+          <button class="sig-btn" data-sig="gauss">gauss</button>
+          <button class="sig-btn" data-sig="exp">exp</button>
+        </div>
+        <div class="sig-formula g-formula-color" id="gFormula"></div>
+      </div>
+      <div class="ctrl-group">
+        <label id="labelT">Position t</label>
+        <div class="ctrl-row">
+          <input type="range" id="tSlider" min="-3" max="3" step="0.02" value="0">
+          <span class="val" id="tVal">0.0</span>
+        </div>
+      </div>
+      <div class="ctrl-row ctrl-row-spread">
+        <button class="play-btn" id="playBtn">▶ PLAY</button>
+        <button class="play-btn flip-btn" id="flipBtn" title="Replay the flip">⟲</button>
+        <span class="status-line" id="areaText">S = 0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mid-row">
+    <div class="cbox"><canvas id="productCanvas" height="130"></canvas></div>
+    <div class="cbox"><canvas id="convCanvas" height="130"></canvas></div>
+  </div>
+
+  <div class="cbox theory">
+    <div class="lang-sw">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+      <button class="lang-btn" data-lang="tt">TT</button>
+    </div>
+
+    <div class="tc" data-lang="en">
+      <h3>Convolution</h3>
+      <p>The convolution of two signals <span class="k">f</span> and <span class="k">g</span> produces a new signal describing how the shape of one is "smeared" by the other:</p>
+      <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
+      <p>Geometrically: <strong>flip</strong> <span class="k">g</span>, <strong>shift</strong> it by <span class="k">t</span>, <strong>multiply</strong> pointwise with <span class="k">f</span>, and <strong>integrate</strong> the product. The shaded area is the output value at that <span class="k">t</span> — the teal area becomes the teal bar on the right. Convolution is <strong>commutative</strong> (<span class="k">f*g = g*f</span>: flip either one), and areas multiply: <span class="k">\int f*g = \int f \cdot \int g</span>.</p>
+      <p class="note"><strong>LTI (Linear Time-Invariant) systems:</strong> if <span class="k">f</span> is the input and <span class="k">g</span> is the <strong>impulse response</strong> (the system's output when the input is a unit impulse <span class="k">\delta(t)</span>), then <span class="k">f*g</span> is the system output. Convolution is the fundamental operation of all LTI systems.</p>
+    </div>
+
+    <div class="tc" data-lang="ru">
+      <h3>Свёртка</h3>
+      <p>Свёртка двух сигналов <span class="k">f</span> и <span class="k">g</span> порождает новый сигнал, описывающий «размазывание» формы одного сигнала формой другого:</p>
+      <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
+      <p>Геометрически: <strong>зеркально отразить</strong> <span class="k">g</span>, <strong>сдвинуть</strong> на <span class="k">t</span>, <strong>перемножить</strong> поточечно с <span class="k">f</span> и <strong>проинтегрировать</strong>. Заштрихованная площадь — значение выхода при данном <span class="k">t</span>: бирюзовая площадь становится высотой бирюзового столбика справа. Свёртка <strong>коммутативна</strong> (<span class="k">f*g = g*f</span> — отражать можно любой сигнал), а площади перемножаются: <span class="k">\int f*g = \int f \cdot \int g</span>.</p>
+      <p class="note"><strong>ЛСС — линейные стационарные (инвариантные во времени) системы:</strong> если <span class="k">f</span> — вход, а <span class="k">g</span> — <strong>импульсная характеристика</strong> (реакция системы на единичный импульс <span class="k">\delta(t)</span>), то <span class="k">f*g</span> — выход системы. Свёртка — фундаментальная операция всех линейных стационарных систем.</p>
+    </div>
+
+    <div class="tc" data-lang="tt">
+      <h3>Конволюция</h3>
+      <p><span class="k">f</span> һәм <span class="k">g</span> сигналларының конволюциясе яңа сигнал барлыкка китерә — берсенең формасы икенчесенең формасы буенча «таралуын» күрсәтә:</p>
+      <div class="fb"><span class="k-block">(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau</span></div>
+      <p>Геометрик мәгънәсе: <span class="k">g</span> сигналын <strong>көзгедәй чагылдыр</strong>, <span class="k">t</span>-га <strong>күчер</strong>, <span class="k">f</span> белән <strong>тапкырла</strong> һәм <strong>интеграллә</strong>. Буялган мәйдан — бирелгән <span class="k">t</span>-дагы чыгыш кыйммәте: фирүзә мәйдан уң яктагы фирүзә баганага әйләнә. Конволюция <strong>коммутатив</strong> (<span class="k">f*g = g*f</span> — теләсә кайсысын чагылдырырга мөмкин), ә мәйданнар тапкырлана: <span class="k">\int f*g = \int f \cdot \int g</span>.</p>
+      <p class="note"><strong>ЛСС — сызыклы стационар (вакытка карата инвариант) системалар:</strong> <span class="k">f</span> — кертү, <span class="k">g</span> — <strong>импульс характеристикасы</strong> (берәмлек импульс <span class="k">\delta(t)</span> кертүгә система җавабы) булса, <span class="k">f*g</span> — система чыгышы. Конволюция — барлык ЛСС-системаларның төп операциясе.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/*KIT-JS*/
+</script>
+<script>
+(() => {
+  'use strict';
+  // ---- HELPERS ----
+  const { $, clearActive, rgb, BLUE, AMBER, STEEL, TEAL, BG, drawGlow, T, TF } = Kit;
+
+  // ---- i18n ----
+  const I18N = {
+    title:        { en: 'Convolution Roller', ru: 'Свёртка шаг за шагом', tt: 'Конволюция: тәгәрмәч' },
+    tagLine:      { en: 'Signals & Systems', ru: 'Сигналы и системы', tt: 'Сигналлар һәм системалар' },
+    labelF:       { en: 'Signal f(τ)', ru: 'Сигнал f(τ)', tt: 'Сигнал f(τ)' },
+    labelG:       { en: 'Signal g(τ)', ru: 'Сигнал g(τ)', tt: 'Сигнал g(τ)' },
+    labelT:       { en: 'Position t',  ru: 'Сдвиг t',   tt: 'Позиция t' },
+    play:         { en: '▶ PLAY',      ru: '▶ ПУСК',      tt: '▶ УЙНАТ' },
+    pause:        { en: '⏸ PAUSE',     ru: '⏸ ПАУЗА',     tt: '⏸ ТУКТА' },
+    inputSignals: { en: 'INPUT SIGNALS', ru: 'ВХОДНЫЕ СИГНАЛЫ', tt: 'КЕРТҮ СИГНАЛЛАРЫ' },
+    product:      { en: 'PRODUCT',     ru: 'ПРОИЗВЕДЕНИЕ', tt: 'ТАПКЫРЛАУ' },
+    convResult:   { en: 'CONVOLUTION RESULT', ru: 'РЕЗУЛЬТАТ СВЁРТКИ', tt: 'КОНВОЛЮЦИЯ НӘТИҖӘСЕ' },
+    area:         { en: (v) => `S = ${v}`, ru: (v) => `S = ${v}`, tt: (v) => `S = ${v}` },
+    productLeg:   { en: 'f(τ)·g(t−τ)', ru: 'f(τ)·g(t−τ)', tt: 'f(τ)·g(t−τ)' },
+    /* Guided questions: a demo without one is just a box of sliders. */
+    hintRR:  { en: '<span class="q">?</span> Two identical boxes give a <b>triangle</b> — why is the peak exactly at t = 0, and why is it exactly 1.0?',
+               ru: '<span class="q">?</span> Два одинаковых прямоугольника дают <b>треугольник</b> — почему пик ровно при t = 0 и почему он ровно 1.0?',
+               tt: '<span class="q">?</span> Ике бертөрле турыпочмаклык <b>өчпочмак</b> бирә — ни өчен пик нәкъ t = 0 да һәм ни өчен ул нәкъ 1.0?' },
+    hintGG:  { en: '<span class="q">?</span> Gaussian ∗ Gaussian is again a <b>Gaussian</b> — watch the width grow as <b>√(σ₁²+σ₂²)</b>.',
+               ru: '<span class="q">?</span> Гаусс ∗ Гаусс — снова <b>гауссиана</b>, ширина растёт как <b>√(σ₁²+σ₂²)</b>.',
+               tt: '<span class="q">?</span> Гаусс ∗ Гаусс — тагын <b>гауссиана</b>, киңлеге <b>√(σ₁²+σ₂²)</b> кебек үсә.' },
+    hintRE:  { en: '<span class="q">?</span> A box through <b>e<sup>−2.5τ</sup>u(τ)</b> is an RC circuit: charge while the box is on, then decay.',
+               ru: '<span class="q">?</span> Прямоугольник, свёрнутый с <b>e<sup>−2.5τ</sup>u(τ)</b>, — это RC-цепь: заряд, пока импульс есть, затем разряд.',
+               tt: '<span class="q">?</span> Турыпочмаклык <b>e<sup>−2.5τ</sup>u(τ)</b> аша — RC-чылбыр: импульс барда заряд, аннары разряд.' },
+    hintEE:  { en: '<span class="q">?</span> Two causal exponentials: the output starts at <b>t = 0</b> and rises before it decays. Causality is preserved.',
+               ru: '<span class="q">?</span> Две односторонние экспоненты: выход начинается при <b>t = 0</b> и сначала растёт. Причинность сохраняется.',
+               tt: '<span class="q">?</span> Ике каузаль экспонента: чыгыш <b>t = 0</b> дан башлана һәм башта үсә. Каузальлек сакланa.' },
+    hintGen: { en: '<span class="q">?</span> Check it: <b>area(f∗g) = area(f) × area(g)</b>, whatever the shapes.',
+               ru: '<span class="q">?</span> Проверьте: <b>площадь(f∗g) = площадь(f) × площадь(g)</b> при любых формах.',
+               tt: '<span class="q">?</span> Тикшерегез: <b>мәйдан(f∗g) = мәйдан(f) × мәйдан(g)</b>, формалар нинди булса да.' },
+    legF:    { en: 'f(τ)', ru: 'f(τ)', tt: 'f(τ)' },
+    legGraw: { en: 'g(τ)', ru: 'g(τ)', tt: 'g(τ)' },
+    legG:    { en: 'g(t−τ)', ru: 'g(t−τ)', tt: 'g(t−τ)' },
+  };
+
+  function updateUIText() {
+    $('title').textContent = T('title');
+    $('tagLine').textContent = T('tagLine');
+    $('labelF').textContent = T('labelF');
+    $('labelG').textContent = T('labelG');
+    $('labelT').textContent = T('labelT');
+    $('playBtn').textContent = playing ? T('pause') : T('play');
+    updateHint();
+  }
+
+  function updateHint() {
+    const pair = fType + '*' + gType;
+    const key = (pair === 'rect*rect') ? 'hintRR'
+              : (pair === 'gauss*gauss') ? 'hintGG'
+              : (pair === 'rect*exp' || pair === 'exp*rect') ? 'hintRE'
+              : (pair === 'exp*exp') ? 'hintEE'
+              : 'hintGen';
+    $('hintBar').innerHTML = T(key);
+  }
+
+  // ---- KaTeX rendering ----
+
+
+  // ---- SIGNALS ----
+  const signals = {
+    rect: τ => (Math.abs(τ) <= 0.5) ? 1 : 0,
+    tri:  τ => Math.max(0, 1 - Math.abs(τ)),
+    gauss:τ => Math.exp(-τ * τ / 0.18),
+    exp:  τ => (τ >= 0) ? Math.exp(-2.5 * τ) : 0,
+  };
+
+  const sigFormulas = {
+    rect: "<span class=\"katex\"><span class=\"katex-mathml\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi mathvariant=\"normal\">Π</mi><mo stretchy=\"false\">(</mo><mi>τ</mi><mo stretchy=\"false\">)</mo><mo>=</mo><mrow><mo fence=\"true\">{</mo><mtable rowspacing=\"0.36em\" columnalign=\"left left\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mrow><mn>1</mn><mo separator=\"true\">,</mo></mrow></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mrow><mi mathvariant=\"normal\">∣</mi><mi>τ</mi><mi mathvariant=\"normal\">∣</mi><mo>≤</mo><mfrac><mn>1</mn><mn>2</mn></mfrac></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mtext>else</mtext></mstyle></mtd></mtr></mtable></mrow></mrow><annotation encoding=\"application/x-tex\">\\Pi(\\tau)=\\begin{cases}1,&amp;|\\tau|\\le\\tfrac{1}{2}\\\\0&amp;\\text{else}\\end{cases}</annotation></semantics></math></span><span class=\"katex-html\" aria-hidden=\"true\"><span class=\"base\"><span class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"></span><span class=\"mord\">Π</span><span class=\"mopen\">(</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mclose\">)</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mrel\">=</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:3em;vertical-align:-1.25em;\"></span><span class=\"minner\"><span class=\"mopen delimcenter\" style=\"top:0em;\"><span class=\"delimsizing size4\">{</span></span><span class=\"mord\"><span class=\"mtable\"><span class=\"col-align-l\"><span class=\"vlist-t vlist-t2\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.69em;\"><span style=\"top:-3.69em;\"><span class=\"pstrut\" style=\"height:3.008em;\"></span><span class=\"mord\"><span class=\"mord\">1</span><span class=\"mpunct\">,</span></span></span><span style=\"top:-2.25em;\"><span class=\"pstrut\" style=\"height:3.008em;\"></span><span class=\"mord\"><span class=\"mord\">0</span></span></span></span><span class=\"vlist-s\">​</span></span><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.19em;\"><span></span></span></span></span></span><span class=\"arraycolsep\" style=\"width:1em;\"></span><span class=\"col-align-l\"><span class=\"vlist-t vlist-t2\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.69em;\"><span style=\"top:-3.69em;\"><span class=\"pstrut\" style=\"height:3.008em;\"></span><span class=\"mord\"><span class=\"mord\">∣</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mord\">∣</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mrel\">≤</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mord\"><span class=\"mopen nulldelimiter\"></span><span class=\"mfrac\"><span class=\"vlist-t vlist-t2\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.8451em;\"><span style=\"top:-2.655em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"sizing reset-size6 size3 mtight\"><span class=\"mord mtight\"><span class=\"mord mtight\">2</span></span></span></span><span style=\"top:-3.23em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"frac-line\" style=\"border-bottom-width:0.04em;\"></span></span><span style=\"top:-3.394em;\"><span class=\"pstrut\" style=\"height:3em;\"></span><span class=\"sizing reset-size6 size3 mtight\"><span class=\"mord mtight\"><span class=\"mord mtight\">1</span></span></span></span></span><span class=\"vlist-s\">​</span></span><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.345em;\"><span></span></span></span></span></span><span class=\"mclose nulldelimiter\"></span></span></span></span><span style=\"top:-2.25em;\"><span class=\"pstrut\" style=\"height:3.008em;\"></span><span class=\"mord\"><span class=\"mord text\"><span class=\"mord\">else</span></span></span></span></span><span class=\"vlist-s\">​</span></span><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:1.19em;\"><span></span></span></span></span></span></span></span><span class=\"mclose nulldelimiter\"></span></span></span></span></span>",
+    tri: "<span class=\"katex\"><span class=\"katex-mathml\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi mathvariant=\"normal\">Λ</mi><mo stretchy=\"false\">(</mo><mi>τ</mi><mo stretchy=\"false\">)</mo><mo>=</mo><mi>max</mi><mo>⁡</mo><mo stretchy=\"false\">(</mo><mn>0</mn><mo separator=\"true\">,</mo><mtext> </mtext><mn>1</mn><mo>−</mo><mi mathvariant=\"normal\">∣</mi><mi>τ</mi><mi mathvariant=\"normal\">∣</mi><mo stretchy=\"false\">)</mo></mrow><annotation encoding=\"application/x-tex\">\\Lambda(\\tau)=\\max(0,\\,1-|\\tau|)</annotation></semantics></math></span><span class=\"katex-html\" aria-hidden=\"true\"><span class=\"base\"><span class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"></span><span class=\"mord\">Λ</span><span class=\"mopen\">(</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mclose\">)</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mrel\">=</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"></span><span class=\"mop\">max</span><span class=\"mopen\">(</span><span class=\"mord\">0</span><span class=\"mpunct\">,</span><span class=\"mspace\" style=\"margin-right:0.1667em;\"></span><span class=\"mspace\" style=\"margin-right:0.1667em;\"></span><span class=\"mord\">1</span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span><span class=\"mbin\">−</span><span class=\"mspace\" style=\"margin-right:0.2222em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"></span><span class=\"mord\">∣</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mord\">∣</span><span class=\"mclose\">)</span></span></span></span>",
+    gauss: "<span class=\"katex\"><span class=\"katex-mathml\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>g</mi><mo stretchy=\"false\">(</mo><mi>τ</mi><mo stretchy=\"false\">)</mo><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>τ</mi><mn>2</mn></msup><mi mathvariant=\"normal\">/</mi><mn>0.18</mn></mrow></msup></mrow><annotation encoding=\"application/x-tex\">g(\\tau)=e^{-\\tau^2/0.18}</annotation></semantics></math></span><span class=\"katex-html\" aria-hidden=\"true\"><span class=\"base\"><span class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"></span><span class=\"mord mathnormal\" style=\"margin-right:0.03588em;\">g</span><span class=\"mopen\">(</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mclose\">)</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mrel\">=</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:0.9869em;\"></span><span class=\"mord\"><span class=\"mord mathnormal\">e</span><span class=\"msupsub\"><span class=\"vlist-t\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.9869em;\"><span style=\"top:-3.063em;margin-right:0.05em;\"><span class=\"pstrut\" style=\"height:2.7em;\"></span><span class=\"sizing reset-size6 size3 mtight\"><span class=\"mord mtight\"><span class=\"mord mtight\">−</span><span class=\"mord mtight\"><span class=\"mord mathnormal mtight\" style=\"margin-right:0.1132em;\">τ</span><span class=\"msupsub\"><span class=\"vlist-t\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.8913em;\"><span style=\"top:-2.931em;margin-right:0.0714em;\"><span class=\"pstrut\" style=\"height:2.5em;\"></span><span class=\"sizing reset-size3 size1 mtight\"><span class=\"mord mtight\">2</span></span></span></span></span></span></span></span><span class=\"mord mtight\">/0.18</span></span></span></span></span></span></span></span></span></span></span></span>",
+    exp: "<span class=\"katex\"><span class=\"katex-mathml\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>h</mi><mo stretchy=\"false\">(</mo><mi>τ</mi><mo stretchy=\"false\">)</mo><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>2.5</mn><mi>τ</mi></mrow></msup><mtext> </mtext><mi>u</mi><mo stretchy=\"false\">(</mo><mi>τ</mi><mo stretchy=\"false\">)</mo></mrow><annotation encoding=\"application/x-tex\">h(\\tau)=e^{-2.5\\tau}\\,u(\\tau)</annotation></semantics></math></span><span class=\"katex-html\" aria-hidden=\"true\"><span class=\"base\"><span class=\"strut\" style=\"height:1em;vertical-align:-0.25em;\"></span><span class=\"mord mathnormal\">h</span><span class=\"mopen\">(</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mclose\">)</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span><span class=\"mrel\">=</span><span class=\"mspace\" style=\"margin-right:0.2778em;\"></span></span><span class=\"base\"><span class=\"strut\" style=\"height:1.0641em;vertical-align:-0.25em;\"></span><span class=\"mord\"><span class=\"mord mathnormal\">e</span><span class=\"msupsub\"><span class=\"vlist-t\"><span class=\"vlist-r\"><span class=\"vlist\" style=\"height:0.8141em;\"><span style=\"top:-3.063em;margin-right:0.05em;\"><span class=\"pstrut\" style=\"height:2.7em;\"></span><span class=\"sizing reset-size6 size3 mtight\"><span class=\"mord mtight\"><span class=\"mord mtight\">−</span><span class=\"mord mtight\">2.5</span><span class=\"mord mathnormal mtight\" style=\"margin-right:0.1132em;\">τ</span></span></span></span></span></span></span></span></span><span class=\"mspace\" style=\"margin-right:0.1667em;\"></span><span class=\"mord mathnormal\">u</span><span class=\"mopen\">(</span><span class=\"mord mathnormal\" style=\"margin-right:0.1132em;\">τ</span><span class=\"mclose\">)</span></span></span></span>",
+  };
+
+  const fFormulaEl = $('fFormula');
+  const gFormulaEl = $('gFormula');
+
+  function renderFormula(el, sigType) {
+    el.innerHTML = sigFormulas[sigType];
+  }
+
+  let fType = 'rect', gType = 'rect';
+  renderFormula(fFormulaEl, fType);
+  renderFormula(gFormulaEl, gType);
+
+  function setupBtns(containerId, setter, formulaEl) {
+    $(containerId).querySelectorAll('.sig-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $(containerId).querySelectorAll('.sig-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setter(btn.dataset.sig);
+        renderFormula(formulaEl, btn.dataset.sig);
+        computeFullConvolution();
+        updateHint();
+      });
+    });
+  }
+  setupBtns('fBtns', s => { fType = s; }, fFormulaEl);
+  setupBtns('gBtns', s => { gType = s; startFlip(); }, gFormulaEl);
+
+  // ---- CANVASES ----
+  const inputCanvas  = $('inputCanvas');
+  const productCanvas = $('productCanvas');
+  const convCanvas   = $('convCanvas');
+  const iCtx = inputCanvas.getContext('2d');
+  const pCtx = productCanvas.getContext('2d');
+  const cCtx = convCanvas.getContext('2d');
+  const tSlider = $('tSlider');
+  const tValEl  = $('tVal');
+  const playBtn = $('playBtn');
+  const areaText = $('areaText');
+
+  const T_MIN = -3, T_MAX = 3;
+  let tPos = 0;                 // open on a state where something is happening
+  let playing = false;
+
+  /* flipA morphs the amber curve's argument from tau (flipA = 0) to t - tau
+     (flipA = 1). Drawing g already flipped hides the single step students
+     actually get wrong, so replay it whenever g changes or ⟲ is pressed. */
+  let flipA = 1;
+  function startFlip() { flipA = 0; }
+
+  tSlider.addEventListener('input', e => {
+    tPos = parseFloat(e.target.value);
+    tValEl.textContent = tPos.toFixed(1);
+  });
+
+  function togglePlay() {
+    playing = !playing;
+    if (playing) {
+      playBtn.textContent = T('pause');
+      if (tPos >= T_MAX - 0.001) tPos = T_MIN;   // only restart when truly at the end
+    } else {
+      playBtn.textContent = T('play');
+    }
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  $('flipBtn').addEventListener('click', startFlip);
+
+  // ---- KEYBOARD SHORTCUTS ----
+  Kit.onKey({
+    ' ': () => togglePlay(),
+    f: () => startFlip(), F: () => startFlip(),
+    ArrowLeft:  e => setT(tPos - (e.shiftKey ? 0.5 : 0.1)),
+    ArrowRight: e => setT(tPos + (e.shiftKey ? 0.5 : 0.1)),
+    Home: () => setT(T_MIN), End: () => setT(T_MAX),
+  });
+
+  function setT(v) {
+    tPos = Math.max(T_MIN, Math.min(T_MAX, v));
+    tSlider.value = tPos;
+    tValEl.textContent = tPos.toFixed(1);
+  }
+
+  // ---- CANVAS ----
+
+
+
+  let iDim, pDim, cDim;
+  // The convolution does not depend on canvas size — do not recompute on resize.
+  function resize() { iDim = Kit.sizeCanvas(inputCanvas); pDim = Kit.sizeCanvas(productCanvas); cDim = Kit.sizeCanvas(convCanvas); }
+  window.addEventListener('resize', resize);
+
+  // ---- CONVOLUTION PRECOMPUTE ----
+  /* Midpoint rule, not the left edge. rect() is discontinuous, so a left-edge
+     Riemann sum put a systematic 1.2% bias on the result: the rect*rect peak
+     came out as 1.008 under a panel that reads "(f*g)(t) = integral ...".
+     4000 nodes cost ~1.2M evaluations, run once per signal change. */
+  const TAU_MIN = -4, TAU_MAX = 4, TAU_STEPS = 4000;
+  /* CONV_STEPS must be ODD so the grid lands exactly on t = 0. With 300 the
+     nearest samples were t = +/-0.01003 and the rect*rect peak read 0.990
+     instead of 1.000 — a visible error that had nothing to do with quadrature. */
+  const CONV_T_MIN = -3, CONV_T_MAX = 3, CONV_STEPS = 301;
+  let convResult = new Float32Array(CONV_STEPS);
+  let convMax = 0.01;
+
+  function computeFullConvolution() {
+    const dtau = (TAU_MAX - TAU_MIN) / TAU_STEPS;
+    const f = signals[fType], g = signals[gType];
+    convMax = 0.01;
+    for (let i = 0; i < CONV_STEPS; i++) {
+      const tc = CONV_T_MIN + (i / (CONV_STEPS - 1)) * (CONV_T_MAX - CONV_T_MIN);
+      let sum = 0;
+      for (let j = 0; j < TAU_STEPS; j++) {
+        const tau = TAU_MIN + ((j + 0.5) / TAU_STEPS) * (TAU_MAX - TAU_MIN);
+        sum += f(tau) * g(tc - tau);
+      }
+      convResult[i] = sum * dtau;
+      if (Math.abs(convResult[i]) > convMax) convMax = Math.abs(convResult[i]);
+    }
+  }
+
+  function getConvAt(tc) {
+    const idx = (tc - CONV_T_MIN) / (CONV_T_MAX - CONV_T_MIN) * (CONV_STEPS - 1);
+    const i0 = Math.max(0, Math.min(CONV_STEPS - 2, Math.floor(idx)));
+    const frac = idx - i0;
+    return convResult[i0] * (1 - frac) + convResult[i0 + 1] * frac;
+  }
+
+  // ---- COORDINATE HELPERS ----
+  function makeCoords(W, H, pad, xMin, xMax) {
+    const drawW = W - pad.l - pad.r;
+    const drawH = H - pad.t - pad.b;
+    const midY = pad.t + drawH / 2;
+    return {
+      toX: v => pad.l + ((v - xMin) / (xMax - xMin)) * drawW,
+      toY: (v, amp) => midY - v * amp,
+      midY, drawW, drawH, W, H, pad
+    };
+  }
+
+  function drawAxes(ctx, co, xMin, xMax, label) {
+    ctx.strokeStyle = 'rgba(136,153,170,0.1)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(co.pad.l, co.midY); ctx.lineTo(co.W - co.pad.r, co.midY); ctx.stroke();
+    const zx = co.toX(0);
+    if (zx > co.pad.l && zx < co.W - co.pad.r) {
+      ctx.strokeStyle = 'rgba(136,153,170,0.06)';
+      ctx.beginPath(); ctx.moveTo(zx, co.pad.t); ctx.lineTo(zx, co.H - co.pad.b); ctx.stroke();
+    }
+    ctx.font = '600 8px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(160,178,196,0.9)';
+    ctx.fillText(label, co.W - co.pad.r, 12);
+  }
+
+  // ---- DRAW INPUT SIGNALS ----
+  function drawInputs() {
+    const W = iDim.w, H = iDim.h, ctx = iCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0,0,W,H);
+
+    const pad = {l:16,r:16,t:16,b:16};
+    const co = makeCoords(W, H, pad, -3.5, 3.5);
+    const amp = co.drawH * 0.38;
+    drawAxes(ctx, co, -3.5, 3.5, T('inputSignals'));
+
+    const f = signals[fType], g = signals[gType];
+
+    // f(τ) — blue, static
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.8); ctx.lineWidth = 2;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const y = co.toY(f(tau), amp);
+      px === 0 ? ctx.moveTo(pad.l + px, y) : ctx.lineTo(pad.l + px, y);
+    }
+    ctx.stroke();
+
+    // g(τ) unflipped — faint ghost, so the flip step is visible at all
+    if (flipA < 0.995) {
+      ctx.beginPath(); ctx.strokeStyle = rgb(AMBER, 0.22 * (1 - flipA) + 0.1); ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      for (let px = 0; px <= co.drawW; px++) {
+        const tau = -3.5 + (px / co.drawW) * 7;
+        const y = co.toY(g(tau), amp);
+        px === 0 ? ctx.moveTo(pad.l + px, y) : ctx.lineTo(pad.l + px, y);
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // g(t-τ) — amber. flipA morphs the argument from τ to t−τ so the viewer
+    // actually sees the flip-and-shift rather than its finished result.
+    ctx.beginPath(); ctx.strokeStyle = rgb(AMBER, 0.8); ctx.lineWidth = 2;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const arg = (1 - flipA) * tau + flipA * (tPos - tau);
+      const y = co.toY(g(arg), amp);
+      px === 0 ? ctx.moveTo(pad.l + px, y) : ctx.lineTo(pad.l + px, y);
+    }
+    ctx.stroke();
+
+    // Legend — which colour is which was previously left to guesswork
+    ctx.font = '600 8px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(BLUE, 0.95); ctx.fillText(T('legF'), pad.l + 2, pad.t + 6);
+    ctx.fillStyle = rgb(AMBER, 0.95);
+    ctx.fillText(flipA > 0.5 ? T('legG') : T('legGraw'), pad.l + 32, pad.t + 6);
+
+    // t marker line
+    const tx = co.toX(tPos);
+    if (tx > pad.l && tx < W - pad.r) {
+      ctx.strokeStyle = 'rgba(255,159,28,0.3)'; ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(tx, pad.t); ctx.lineTo(tx, H - pad.b); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '600 9px ui-monospace, Consolas, monospace'; ctx.fillStyle = rgb(AMBER, 0.95); ctx.textAlign = 'center';
+      ctx.fillText('t=' + tPos.toFixed(1), tx, pad.t - 3);
+    }
+  }
+
+  // ---- DRAW PRODUCT ----
+  function drawProduct() {
+    const W = pDim.w, H = pDim.h, ctx = pCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0,0,W,H);
+
+    const pad = {l:14,r:14,t:18,b:18};
+    const co = makeCoords(W, H, pad, -3.5, 3.5);
+    const amp = co.drawH * 0.4;
+    drawAxes(ctx, co, -3.5, 3.5, T('product'));
+
+    const f = signals[fType], g = signals[gType];
+
+    // Filled product area
+    ctx.beginPath();
+    ctx.moveTo(pad.l, co.midY);
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const val = f(tau) * g(tPos - tau);
+      ctx.lineTo(pad.l + px, co.toY(val, amp));
+    }
+    ctx.lineTo(pad.l + co.drawW, co.midY);
+    ctx.closePath();
+
+    // Gradient fill
+    const grad = ctx.createLinearGradient(0, co.midY - amp, 0, co.midY);
+    grad.addColorStop(0, rgb(TEAL, 0.25));
+    grad.addColorStop(1, rgb(TEAL, 0.02));
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Outline
+    ctx.beginPath(); ctx.strokeStyle = rgb(TEAL, 0.8); ctx.lineWidth = 1.5;
+    for (let px = 0; px <= co.drawW; px++) {
+      const tau = -3.5 + (px / co.drawW) * 7;
+      const val = f(tau) * g(tPos - tau);
+      px === 0 ? ctx.moveTo(pad.l + px, co.toY(val, amp)) : ctx.lineTo(pad.l + px, co.toY(val, amp));
+    }
+    ctx.stroke();
+
+    // Area label — the ONE number this panel is about, shown on the panel itself
+    const convArea = getConvAt(Math.max(CONV_T_MIN, Math.min(CONV_T_MAX, tPos)));
+    areaText.textContent = TF('area', convArea.toFixed(3));
+
+    // Legend
+    ctx.font = '600 8px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(TEAL, 0.9); ctx.fillText(T('productLeg'), pad.l + 4, pad.t + 8);
+    ctx.textAlign = 'right';
+    ctx.font = '700 10px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = rgb(TEAL, 0.95);
+    ctx.fillText('S = ' + convArea.toFixed(3), W - pad.r - 2, H - pad.b + 10);
+  }
+
+  // ---- DRAW CONVOLUTION RESULT ----
+  function drawConvolution() {
+    const W = cDim.w, H = cDim.h, ctx = cCtx;
+    ctx.fillStyle = BG; ctx.fillRect(0,0,W,H);
+
+    const pad = {l:14,r:14,t:18,b:18};
+    const co = makeCoords(W, H, pad, CONV_T_MIN, CONV_T_MAX);
+
+    const amp = co.drawH * 0.42 / convMax;
+
+    drawAxes(ctx, co, CONV_T_MIN, CONV_T_MAX, T('convResult'));
+
+    // Full convolution curve
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.3); ctx.lineWidth = 1.5;
+    for (let i = 0; i < CONV_STEPS; i++) {
+      const tc = CONV_T_MIN + (i / (CONV_STEPS - 1)) * (CONV_T_MAX - CONV_T_MIN);
+      const x = co.toX(tc);
+      const y = co.toY(convResult[i], amp);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // "Drawn so far" part (up to current t) — bright
+    ctx.beginPath(); ctx.strokeStyle = rgb(BLUE, 0.9); ctx.lineWidth = 2;
+    for (let i = 0; i < CONV_STEPS; i++) {
+      const tc = CONV_T_MIN + (i / (CONV_STEPS - 1)) * (CONV_T_MAX - CONV_T_MIN);
+      if (tc > tPos) break;
+      const x = co.toX(tc);
+      const y = co.toY(convResult[i], amp);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Current point dot
+    const curVal = getConvAt(Math.max(CONV_T_MIN, Math.min(CONV_T_MAX, tPos)));
+    const dotX = co.toX(tPos);
+    const dotY = co.toY(curVal, amp);
+    if (dotX >= pad.l && dotX <= W - pad.r) {
+      /* The teal area in the product panel BECOMES this teal bar. Same colour,
+         same gradient — without it "the shaded area is the output value" is a
+         claim the picture never actually makes. */
+      const bw = 7;
+      const gbar = ctx.createLinearGradient(0, dotY, 0, co.midY);
+      gbar.addColorStop(0, rgb(TEAL, 0.55));
+      gbar.addColorStop(1, rgb(TEAL, 0.05));
+      ctx.fillStyle = gbar;
+      ctx.fillRect(dotX - bw / 2, Math.min(dotY, co.midY), bw, Math.abs(dotY - co.midY));
+
+      ctx.strokeStyle = rgb(AMBER, 0.25); ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(dotX, co.midY); ctx.lineTo(dotX, dotY); ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawGlow(ctx, dotX, dotY, 14, AMBER, 0.4);
+      ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI*2);
+      ctx.fillStyle = rgb(AMBER, 1); ctx.fill();
+      ctx.beginPath(); ctx.arc(dotX, dotY, 1.5, 0, Math.PI*2);
+      ctx.fillStyle = '#e8ecf0'; ctx.fill();
+    }
+
+    // Label
+    ctx.font = '600 8px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = rgb(BLUE, 0.95); ctx.fillText('(f*g)(t)', pad.l + 4, pad.t + 8);
+  }
+
+  // ---- INIT & LOOP ----
+  resize();
+  computeFullConvolution();
+  setT(tPos);
+  Kit.initI18n(I18N, { onChange: () => { updateUIText(); Kit.lockTheoryHeight(); } });
+  updateUIText();
+  Kit.autoLockTheory();
+
+
+
+  function draw(dt) {
+    if (playing) {
+      tPos += dt * 0.8;
+      if (tPos > T_MAX) { tPos = T_MIN; }
+      tSlider.value = tPos;
+      tValEl.textContent = tPos.toFixed(1);
+    }
+    if (flipA < 1) flipA = Math.min(1, flipA + dt / 1.1);   // ~1.1s flip-and-shift
+    drawInputs();
+    drawProduct();
+    drawConvolution();
+  }
+
+  Kit.loop(draw);
+
+  /* Stated by the demo, not spliced in by the harness. */
+  window.__demo = {
+    signals, computeFullConvolution, getConvAt, startFlip, setT,
+    TAU_STEPS, TAU_MIN, TAU_MAX, CONV_STEPS, T_MIN, T_MAX, I18N,
+    setSig(f, g) { fType = f; gType = g; computeFullConvolution(); },
+    get convMax() { return convMax; },
+    get flip() { return flipA; },
+    get t() { return tPos; },
+  };
+})();
+</script>
+</body>
+</html>
